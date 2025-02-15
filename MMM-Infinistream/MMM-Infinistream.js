@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 /*
  * This version of the MMM-Infinistream module uses the Document API (createElement, etc.)
@@ -7,8 +7,8 @@
  * The flows are:
  *  CONNECTING: default mode until an update is received.
  *  SHOWER:     tank -> heater -> shower -> filter -> UV -> tank
- *  FLUSH:      tank -> filter -> dripping faucet
- *  DRAIN:      tank -> dripping faucet
+ *  FLUSH:      tank -> filter -> faucet
+ *  DRAIN:      tank -> faucet
  *  SANITIZE:   tank -> UV -> tank
  */
 
@@ -22,16 +22,15 @@ Module.register("MMM-Infinistream", {
     // Set default mode to CONNECTING until we receive a webhook update
     this.mode = "CONNECTING";
     this.turbidity = 0;
-    this.sendSocketNotification("STARTED",{message:"test1"});
+    this.sendSocketNotification("STARTED", { message: "test1" });
   },
 
   socketNotificationReceived: function(notification, payload) {
     Log.log(this.name + " received a socket notification: " + notification + " - Payload: " + payload);
-    this.turbidity = payload.turbidity
-    this.mode = payload.mode
-    this.updateDom()
+    this.turbidity = payload.turbidity;
+    this.mode = payload.mode;
+    this.updateDom();
   },
-
 
   // Return the main DOM structure
   getDom: function () {
@@ -68,12 +67,14 @@ Module.register("MMM-Infinistream", {
 
   // Return an <i> element for the current mode icon
   getModeIconElement: function () {
+    // We'll keep these mode icons for the textual label
+    // (Not the water-flow faucet glyph, which we handle in updateFlowVisibility)
     const modeIcons = {
       CONNECTING: ["fa-solid", "fa-spinner", "fa-spin"],
       SHOWER: ["fa-solid", "fa-shower"],
       DRAIN: ["fa-solid", "fa-faucet-drip"],
-      FLUSH: ["fa-solid", "fa-faucet"],
-      SANITIZE: ["fa-solid", "fa-filter"] // If you want a different icon for sanitize, update here
+      FLUSH: ["fa-solid", "fa-faucet-drip"],
+      SANITIZE: ["fa-solid", "fa-sun"]
     };
 
     const iconClasses = modeIcons[this.mode] || ["fa-solid", "fa-question"];
@@ -210,7 +211,7 @@ Module.register("MMM-Infinistream", {
 
     // comp-faucet
     const compFaucet = createSpan("comp-faucet", [
-      createIcon(["fa-solid", "fa-faucet-drip"])
+      createIcon(["fa-solid", "fa-faucet"])
     ]);
     flowLayout.appendChild(compFaucet);
 
@@ -231,6 +232,7 @@ Module.register("MMM-Infinistream", {
 
     // Hide everything first
     const allIds = [
+      'comp-tank1',
       'arrow-tank-heater',
       'comp-heater',
       'arrow-heater-shower',
@@ -251,15 +253,14 @@ Module.register("MMM-Infinistream", {
       setHidden(id, true);
     });
 
-    // The tank1 always visible
-
+    // Now reveal the relevant components based on mode
     switch (this.mode) {
       case 'CONNECTING':
-        // Show minimal or no flow when connecting
+        // Show nothing
         break;
-
       case 'SHOWER':
         // tank1 -> heater -> shower -> filter -> uv -> tank2
+        setHidden('comp-tank1', false);
         setHidden('arrow-tank-heater', false);
         setHidden('comp-heater', false);
         setHidden('arrow-heater-shower', false);
@@ -271,31 +272,30 @@ Module.register("MMM-Infinistream", {
         setHidden('arrow-uv-tank', false);
         setHidden('comp-tank2', false);
         break;
-
       case 'FLUSH':
         // tank1 -> filter -> faucet
+        setHidden('comp-tank1', false);
         setHidden('arrow-tank-filter', false);
         setHidden('comp-filter', false);
         setHidden('arrow-tank-faucet', false);
         setHidden('comp-faucet', false);
         break;
-
       case 'DRAIN':
         // tank1 -> faucet
+        setHidden('comp-tank1', false);
         setHidden('arrow-tank-faucet', false);
         setHidden('comp-faucet', false);
         break;
-
       case 'SANITIZE':
         // tank1 -> uv -> tank2
+        setHidden('comp-tank1', false);
         setHidden('arrow-tank-uv', false);
         setHidden('comp-uv', false);
         setHidden('arrow-uv-tank', false);
         setHidden('comp-tank2', false);
         break;
-
       default:
-        // If unknown mode, do nothing or hide everything
+        // If unknown mode, do nothing (all hidden)
         break;
     }
   },
