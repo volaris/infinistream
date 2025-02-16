@@ -15,7 +15,8 @@
 Module.register("MMM-Infinistream", {
   defaults: {
     turbidityLevels: [0, 50, 100], // Configurable turbidity thresholds
-    webhookPort: 8085             // Port for receiving web hook updates
+    webhookPort: 8085,            // Port for receiving web hook updates
+    slowSpinner: true             // If true, use a slower spinner animation for e-ink
   },
 
   start: function () {
@@ -70,7 +71,7 @@ Module.register("MMM-Infinistream", {
     // We'll keep these mode icons for the textual label
     // (Not the water-flow faucet glyph, which we handle in updateFlowVisibility)
     const modeIcons = {
-      CONNECTING: ["fa-solid", "fa-spinner", "fa-spin"],
+      CONNECTING: ["fa-solid", "fa-spinner"],
       SHOWER: ["fa-solid", "fa-shower"],
       DRAIN: ["fa-solid", "fa-faucet-drip"],
       FLUSH: ["fa-solid", "fa-faucet-drip"],
@@ -80,6 +81,15 @@ Module.register("MMM-Infinistream", {
     const iconClasses = modeIcons[this.mode] || ["fa-solid", "fa-question"];
     const iEl = document.createElement("i");
     iconClasses.forEach(c => iEl.classList.add(c));
+
+    // If we're in CONNECTING mode, add spin (slow or default)
+    if (this.mode === "CONNECTING") {
+      iEl.classList.add("fa-spin");
+      if (this.config.slowSpinner) {
+        iEl.classList.add("spin-slow");
+      }
+    }
+
     return iEl;
   },
 

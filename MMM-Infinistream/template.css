@@ -1,3 +1,21 @@
 .MMM-Template div {
     color: purple;
 }
+
+.hidden {
+    display: none;
+}
+
+/* Slow spinner for E-Ink displays */
+@keyframes spin-slow {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spin-slow {
+    animation: spin-slow 10s linear infinite !important;
+}
