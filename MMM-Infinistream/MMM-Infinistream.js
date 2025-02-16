@@ -1,8 +1,9 @@
-'use strict';
+"use strict";
 
 /*
- * This version of the MMM-Infinistream module uses the Document API (createElement, etc.)
- * instead of inserting HTML strings via innerHTML.
+ * This version of the MMM-Infinistream module uses a 2D layout for the water flow, so we can place
+ * the shower on the left with water coming in from above and draining below.
+ * We'll use basic CSS grid or flex columns to arrange the icons.
  *
  * The flows are:
  *  CONNECTING: default mode until an update is received.
@@ -56,7 +57,7 @@ Module.register("MMM-Infinistream", {
     turbidityDiv.appendChild(turbidityIconEl);
     wrapper.appendChild(turbidityDiv);
 
-    // Water Flow Representation (static layout using document API)
+    // Water Flow Representation
     const flowDiv = this.getWaterFlowDom();
     wrapper.appendChild(flowDiv);
 
@@ -68,8 +69,6 @@ Module.register("MMM-Infinistream", {
 
   // Return an <i> element for the current mode icon
   getModeIconElement: function () {
-    // We'll keep these mode icons for the textual label
-    // (Not the water-flow faucet glyph, which we handle in updateFlowVisibility)
     const modeIcons = {
       CONNECTING: ["fa-solid", "fa-spinner"],
       SHOWER: ["fa-solid", "fa-shower"],
@@ -80,7 +79,7 @@ Module.register("MMM-Infinistream", {
 
     const iconClasses = modeIcons[this.mode] || ["fa-solid", "fa-question"];
     const iEl = document.createElement("i");
-    iconClasses.forEach(c => iEl.classList.add(c));
+    iconClasses.forEach((c) => iEl.classList.add(c));
 
     // If we're in CONNECTING mode, add spin (slow or default)
     if (this.mode === "CONNECTING") {
@@ -104,128 +103,82 @@ Module.register("MMM-Infinistream", {
     }
 
     const iEl = document.createElement("i");
-    iconClasses.forEach(c => iEl.classList.add(c));
+    iconClasses.forEach((c) => iEl.classList.add(c));
     return iEl;
   },
 
-  // Create the water-flow schematic using document.createElement
+  // Create a 2D layout to show the shower on the left with water in from above, out below
   getWaterFlowDom: function () {
-    const flowLayout = document.createElement("div");
-    flowLayout.id = "water-flow-layout";
-    flowLayout.style.whiteSpace = "nowrap";
+    const container = document.createElement("div");
+    container.id = "water-flow-layout";
 
-    // Helper to create an icon <i> with classList
-    function createIcon(classes) {
-      const iEl = document.createElement("i");
-      classes.forEach(c => iEl.classList.add(c));
-      return iEl;
-    }
+    // We'll use CSS grid to position each element.
+    // The shower is on the left, the tank is above it, and water can flow out below.
 
-    // Helper to create a <span> container with an optional id
-    function createSpan(id, children = []) {
-      const spanEl = document.createElement("span");
-      if (id) {
-        spanEl.id = id;
-      }
-      children.forEach(child => spanEl.appendChild(child));
-      return spanEl;
-    }
+    // Elements:
+    //  - compTank1 (the main tank on top of the shower)
+    //  - arrowTankDown (vertical arrow from tank to shower)
+    //  - compShower (the shower itself, on the left column)
+    //  - arrowShowerDown (vertical arrow from shower down)
+    //  - compHeater, compFilter, compUv, etc. on the right side or below.
 
-    // Tank #1
-    const compTank1 = createSpan("comp-tank1", [
-      createIcon(["fa-solid", "fa-bracket-left"]),
-      createIcon(["fa-solid", "fa-water"]),
-      createIcon(["fa-solid", "fa-bracket-right"])
-    ]);
-    flowLayout.appendChild(compTank1);
+    container.innerHTML = `
+      <div class="flow-grid">
+        <!-- Row 1: Tank above shower -->
+        <div class="tank" id="comp-tank1">
+          <i class="fa-solid fa-bracket-left"></i>
+          <i class="fa-solid fa-water"></i>
+          <i class="fa-solid fa-bracket-right"></i>
+        </div>
+        <div class="arrow-vertical" id="arrow-tank-heater">
+          <i class="fa-solid fa-arrow-down"></i>
+        </div>
+        <div class="heater" id="comp-heater">
+          <i class="fa-solid fa-fire"></i>
+        </div>
+        <div class="arrow-vertical" id="arrow-heater-shower">
+          <i class="fa-solid fa-arrow-down"></i>
+        </div>
+        <div class="shower" id="comp-shower">
+          <i class="fa-solid fa-shower"></i>
+        </div>
+        <div class="arrow-vertical" id="arrow-shower-filter">
+          <i class="fa-solid fa-arrow-down"></i>
+        </div>
+        <!-- We'll place filter/uv to the right, so the arrow from shower leads horizontally to them -->
+        <div class="filter" id="comp-filter">
+          <i class="fa-solid fa-filter"></i>
+        </div>
+        <div class="arrow-horizontal" id="arrow-filter-uv">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="uv" id="comp-uv">
+          <i class="fa-regular fa-sun"></i>
+        </div>
+        <div class="arrow-horizontal" id="arrow-uv-tank">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="tank2" id="comp-tank2">
+          <i class="fa-solid fa-bracket-left"></i>
+          <i class="fa-solid fa-water"></i>
+          <i class="fa-solid fa-bracket-right"></i>
+        </div>
+        <div class="arrow-horizontal" id="arrow-tank-filter">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="arrow-horizontal" id="arrow-tank-uv">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="arrow-horizontal" id="arrow-tank-faucet">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="faucet" id="comp-faucet">
+          <i class="fa-solid fa-faucet"></i>
+        </div>
+      </div>
+    `;
 
-    // arrow-tank-heater
-    const arrowTankHeater = createSpan("arrow-tank-heater", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowTankHeater);
-
-    // comp-heater
-    const compHeater = createSpan("comp-heater", [
-      createIcon(["fa-solid", "fa-fire"])
-    ]);
-    flowLayout.appendChild(compHeater);
-
-    // arrow-heater-shower
-    const arrowHeaterShower = createSpan("arrow-heater-shower", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowHeaterShower);
-
-    // comp-shower
-    const compShower = createSpan("comp-shower", [
-      createIcon(["fa-solid", "fa-shower"])
-    ]);
-    flowLayout.appendChild(compShower);
-
-    // arrow-shower-filter
-    const arrowShowerFilter = createSpan("arrow-shower-filter", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowShowerFilter);
-
-    // comp-filter
-    const compFilter = createSpan("comp-filter", [
-      createIcon(["fa-solid", "fa-filter"])
-    ]);
-    flowLayout.appendChild(compFilter);
-
-    // arrow-filter-uv
-    const arrowFilterUv = createSpan("arrow-filter-uv", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowFilterUv);
-
-    // comp-uv
-    const compUv = createSpan("comp-uv", [
-      createIcon(["fa-regular", "fa-sun"])
-    ]);
-    flowLayout.appendChild(compUv);
-
-    // arrow-uv-tank
-    const arrowUvTank = createSpan("arrow-uv-tank", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowUvTank);
-
-    // comp-tank2
-    const compTank2 = createSpan("comp-tank2", [
-      createIcon(["fa-solid", "fa-bracket-left"]),
-      createIcon(["fa-solid", "fa-water"]),
-      createIcon(["fa-solid", "fa-bracket-right"])
-    ]);
-    flowLayout.appendChild(compTank2);
-
-    // arrow-tank-filter
-    const arrowTankFilter = createSpan("arrow-tank-filter", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowTankFilter);
-
-    // arrow-tank-uv
-    const arrowTankUv = createSpan("arrow-tank-uv", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowTankUv);
-
-    // arrow-tank-faucet
-    const arrowTankFaucet = createSpan("arrow-tank-faucet", [
-      createIcon(["fa-solid", "fa-angle-right"])
-    ]);
-    flowLayout.appendChild(arrowTankFaucet);
-
-    // comp-faucet
-    const compFaucet = createSpan("comp-faucet", [
-      createIcon(["fa-solid", "fa-faucet"])
-    ]);
-    flowLayout.appendChild(compFaucet);
-
-    return flowLayout;
+    return container;
   },
 
   // Show/hide elements based on the current mode
@@ -259,17 +212,18 @@ Module.register("MMM-Infinistream", {
       'comp-faucet'
     ];
 
-    allIds.forEach(id => {
+    allIds.forEach((id) => {
       setHidden(id, true);
     });
 
-    // Now reveal the relevant components based on mode
     switch (this.mode) {
       case 'CONNECTING':
         // Show nothing
         break;
+
       case 'SHOWER':
-        // tank1 -> heater -> shower -> filter -> uv -> tank2
+        // Show: tank1, arrow-tank-heater, heater, arrow-heater-shower, shower,
+        // arrow-shower-filter, filter, arrow-filter-uv, uv, arrow-uv-tank, tank2
         setHidden('comp-tank1', false);
         setHidden('arrow-tank-heater', false);
         setHidden('comp-heater', false);
@@ -282,39 +236,42 @@ Module.register("MMM-Infinistream", {
         setHidden('arrow-uv-tank', false);
         setHidden('comp-tank2', false);
         break;
+
       case 'FLUSH':
-        // tank1 -> filter -> faucet
+        // Show: tank1, arrow-tank-filter, filter, arrow-tank-faucet, faucet
         setHidden('comp-tank1', false);
         setHidden('arrow-tank-filter', false);
         setHidden('comp-filter', false);
         setHidden('arrow-tank-faucet', false);
         setHidden('comp-faucet', false);
         break;
+
       case 'DRAIN':
-        // tank1 -> faucet
+        // Show: tank1, arrow-tank-faucet, faucet
         setHidden('comp-tank1', false);
         setHidden('arrow-tank-faucet', false);
         setHidden('comp-faucet', false);
         break;
+
       case 'SANITIZE':
-        // tank1 -> uv -> tank2
+        // Show: tank1, arrow-tank-uv, uv, arrow-uv-tank, tank2
         setHidden('comp-tank1', false);
         setHidden('arrow-tank-uv', false);
         setHidden('comp-uv', false);
         setHidden('arrow-uv-tank', false);
         setHidden('comp-tank2', false);
         break;
+
       default:
-        // If unknown mode, do nothing (all hidden)
+        // If unknown mode, do nothing
         break;
     }
   },
 
-  // CSS files to load
   getStyles: function () {
     return [
       'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
-      this.file('MMM-Infinistream.css') // See below for .hidden styling
+      this.file('MMM-Infinistream.css')
     ];
   }
 });

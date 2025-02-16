@@ -1,0 +1,54 @@
+/* MMM-Infinistream.css */
+.hidden {
+    display: none;
+}
+
+/* Slow spinner for e-ink (from earlier) */
+@keyframes spin-slow {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spin-slow {
+    animation: spin-slow 10s linear infinite !important;
+}
+
+/* The primary grid for the flow diagram */
+.flow-grid {
+    display: grid;
+    /* Define enough rows/columns to place icons as needed */
+    grid-template-columns: repeat(6, auto);
+    grid-template-rows: repeat(3, auto);
+    gap: 0.5rem;
+    /* Some spacing between cells */
+    align-items: center;
+    justify-items: center;
+}
+
+/* Example placements:
+   * Row 0: tank, arrow down, heater
+   * Row 1: arrow down, shower, arrow down
+   * Row 2: filter, arrow right, uv, arrow right, tank2
+   * etc.
+   * Adjust as desired for a perfect layout
+   */
+
+/* Just an example arrangement */
+.tank {
+    grid-column: 1 / 2;
+    grid-row: 1;
+}
+
+.arrow-vertical {
+    grid-column: 1 / 2;
+    /* the row might vary if you shift the design */
+}
+
+.heater {
+    grid-column: 1 / 2;
+}
