@@ -1,54 +1,154 @@
-/* MMM-Infinistream.css */
 .hidden {
     display: none;
-}
+  }
 
-/* Slow spinner for e-ink (from earlier) */
-@keyframes spin-slow {
+  /* Slow spinner for e-ink */
+  @keyframes spin-slow {
     0% {
-        transform: rotate(0deg);
+      transform: rotate(0deg);
     }
-
     100% {
-        transform: rotate(360deg);
+      transform: rotate(360deg);
     }
-}
-
-.spin-slow {
+  }
+  .spin-slow {
     animation: spin-slow 10s linear infinite !important;
-}
+  }
 
-/* The primary grid for the flow diagram */
-.flow-grid {
+  /* Grid or flex layout for .flow-grid.
+   * f<x<t>x
+   * v v ^ v
+   * s v u x>f
+   * v v ^ ^
+   * x>x>f>x
+   */
+  .flow-grid {
     display: grid;
-    /* Define enough rows/columns to place icons as needed */
-    grid-template-columns: repeat(6, auto);
-    grid-template-rows: repeat(3, auto);
+    grid-template-columns: repeat(9, auto);
+    grid-template-rows: repeat(5, auto);
     gap: 0.5rem;
-    /* Some spacing between cells */
     align-items: center;
     justify-items: center;
-}
+  }
 
-/* Example placements:
-   * Row 0: tank, arrow down, heater
-   * Row 1: arrow down, shower, arrow down
-   * Row 2: filter, arrow right, uv, arrow right, tank2
-   * etc.
-   * Adjust as desired for a perfect layout
-   */
-
-/* Just an example arrangement */
-.tank {
-    grid-column: 1 / 2;
+  /* Example positions (adjust to place items visually) */
+  #comp-tank {
+    font-size: 1.5em;
+    grid-column: 5;
     grid-row: 1;
-}
+  }
+  #comp-heater {
+    font-size: 1.5em;
+    grid-column: 1;
+    grid-row: 1;
+  }
+  #comp-shower {
+    font-size: 1.5em;
+    grid-column: 1;
+    grid-row: 3;
+  }
+  #comp-filter {
+    font-size: 1.5em;
+    grid-column: 5;
+    grid-row: 5;
+  }
+  #comp-uv {
+    font-size: 1.5em;
+    grid-column: 5;
+    grid-row: 3;
+  }
+  #comp-faucet {
+    font-size: 1.5em;
+    grid-column: 9;
+    grid-row: 3;
+  }
 
-.arrow-vertical {
-    grid-column: 1 / 2;
-    /* the row might vary if you shift the design */
-}
+  #tank-flame-mix {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  #shower-filter-mix {
+    grid-column: 1;
+    grid-row: 5;
+  }
+  #tank-filter-mix {
+    grid-column: 3;
+    grid-row: 5;
+  }
+  #filter-faucet-mix {
+    grid-column: 7;
+    grid-row: 5;
+  }
+  #tank-faucet-mix {
+    grid-column: 7;
+    grid-row: 1;
+  }
+  #faucet-mix {
+    grid-column: 7;
+    grid-row: 3;
+  }
 
-.heater {
-    grid-column: 1 / 2;
-}
+  #tank-out {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  #pre-heat {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  #pre-shower {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  #post-shower-1 {
+    grid-column: 1;
+    grid-row: 4;
+  }
+  #post-shower-2 {
+    grid-column: 2;
+    grid-row: 5;
+  }
+  #pre-filter {
+    grid-column: 4;
+    grid-row: 5;
+  }
+  #filter-faucet-1 {
+    grid-column: 6;
+    grid-row: 5;
+  }
+  #filter-faucet-2 {
+    grid-column: 7;
+    grid-row: 4;
+  }
+  #tank-filter-1 {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  #tank-filter-2 {
+    grid-column: 3;
+    grid-row: 3;
+  }
+  #tank-filter-3 {
+    grid-column: 3;
+    grid-row: 4;
+  }
+  #pre-uv {
+    grid-column: 5;
+    grid-row: 4;
+  }
+  #post-uv {
+    grid-column: 5;
+    grid-row: 2;
+  }
+  #tank-faucet-1 {
+    grid-column: 6;
+    grid-row: 1;
+  }
+  #tank-faucet-2 {
+    grid-column: 7;
+    grid-row: 2;
+  }
+  #pre-faucet {
+    grid-column: 8;
+    grid-row: 3;
+  }

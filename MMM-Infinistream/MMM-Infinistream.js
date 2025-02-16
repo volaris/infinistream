@@ -1,9 +1,6 @@
 "use strict";
 
 /*
- * This version of the MMM-Infinistream module uses a 2D layout for the water flow, so we can place
- * the shower on the left with water coming in from above and draining below.
- * We'll use basic CSS grid or flex columns to arrange the icons.
  *
  * The flows are:
  *  CONNECTING: default mode until an update is received.
@@ -107,73 +104,114 @@ Module.register("MMM-Infinistream", {
     return iEl;
   },
 
-  // Create a 2D layout to show the shower on the left with water in from above, out below
+  // Create a 2D layout with a single tank (shown as [ water ]), a loop back to the tank from UV, etc.
   getWaterFlowDom: function () {
     const container = document.createElement("div");
     container.id = "water-flow-layout";
 
-    // We'll use CSS grid to position each element.
-    // The shower is on the left, the tank is above it, and water can flow out below.
-
-    // Elements:
-    //  - compTank1 (the main tank on top of the shower)
-    //  - arrowTankDown (vertical arrow from tank to shower)
-    //  - compShower (the shower itself, on the left column)
-    //  - arrowShowerDown (vertical arrow from shower down)
-    //  - compHeater, compFilter, compUv, etc. on the right side or below.
+    // We'll define a grid or flex layout.
+    // Single tank at the top, arrows leading down to heater -> shower -> filter -> arrow to UV -> arrow up to tank.
+    // Also arrows from tank to filter/faucet for flush/drain, etc.
 
     container.innerHTML = `
       <div class="flow-grid">
-        <!-- Row 1: Tank above shower -->
-        <div class="tank" id="comp-tank1">
-          <i class="fa-solid fa-bracket-left"></i>
-          <i class="fa-solid fa-water"></i>
-          <i class="fa-solid fa-bracket-right"></i>
+        <!-- Single tank -->
+        <div class="tank" id="comp-tank">
+          [ <i class="fa-solid fa-water" font-size=".5em"></i> ]
         </div>
-        <div class="arrow-vertical" id="arrow-tank-heater">
-          <i class="fa-solid fa-arrow-down"></i>
-        </div>
+        <!-- Heater -->
         <div class="heater" id="comp-heater">
           <i class="fa-solid fa-fire"></i>
         </div>
-        <div class="arrow-vertical" id="arrow-heater-shower">
-          <i class="fa-solid fa-arrow-down"></i>
-        </div>
+        <!-- Shower -->
         <div class="shower" id="comp-shower">
           <i class="fa-solid fa-shower"></i>
         </div>
-        <div class="arrow-vertical" id="arrow-shower-filter">
-          <i class="fa-solid fa-arrow-down"></i>
-        </div>
-        <!-- We'll place filter/uv to the right, so the arrow from shower leads horizontally to them -->
+        <!-- Filter -->
         <div class="filter" id="comp-filter">
           <i class="fa-solid fa-filter"></i>
         </div>
-        <div class="arrow-horizontal" id="arrow-filter-uv">
-          <i class="fa-solid fa-arrow-right"></i>
-        </div>
+        <!-- UV -->
         <div class="uv" id="comp-uv">
           <i class="fa-regular fa-sun"></i>
         </div>
-        <div class="arrow-horizontal" id="arrow-uv-tank">
-          <i class="fa-solid fa-arrow-right"></i>
-        </div>
-        <div class="tank2" id="comp-tank2">
-          <i class="fa-solid fa-bracket-left"></i>
-          <i class="fa-solid fa-water"></i>
-          <i class="fa-solid fa-bracket-right"></i>
-        </div>
-        <div class="arrow-horizontal" id="arrow-tank-filter">
-          <i class="fa-solid fa-arrow-right"></i>
-        </div>
-        <div class="arrow-horizontal" id="arrow-tank-uv">
-          <i class="fa-solid fa-arrow-right"></i>
-        </div>
-        <div class="arrow-horizontal" id="arrow-tank-faucet">
-          <i class="fa-solid fa-arrow-right"></i>
-        </div>
+        <!-- Faucet -->
         <div class="faucet" id="comp-faucet">
           <i class="fa-solid fa-faucet"></i>
+        </div>
+
+        <!-- Tank-Flame Mixer -->
+        <div class="shower flush" id="tank-flame-mix">
+          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        </div>
+        <!-- Shower-Filter Mixer -->
+        <div class="shower" id="shower-filter-mix">
+          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        </div>
+        <!-- Tank-Filter Mixer -->
+        <div class="shower flush" id="tank-filter-mix">
+          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        </div>
+        <!-- Filter-Faucet Mixer -->
+        <div class="shower flush" id="filter-faucet-mix">
+          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        </div>
+        <!-- Tank-Faucet Mixer -->
+        <div class="shower flush" id="tank-faucet-mix">
+          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        </div>
+        <!-- Faucet Mixer -->
+        <div class="shower flush" id="faucet-mix">
+          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        </div>
+
+        <div class="shower flush drain" id="tank-out">
+          <i class="fa-solid fa-angles-left" font-weight="300"></i>
+        </div>
+        <div class="shower" id="pre-heat">
+          <i class="fa-solid fa-angles-left" font-weight="300"></i>
+        </div>
+        <div class="shower" id="pre-shower">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+        </div>
+        <div class="shower" id="post-shower-1">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+        </div>
+        <div class="shower" id="post-shower-2">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
+        </div>
+        <div class="shower" id="pre-filter">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
+        </div>
+        <div class="shower" id="filter-faucet-1">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
+        </div>
+        <div class="shower" id="filter-faucet-2">
+          <i class="fa-solid fa-angles-up" font-weight="300"></i>
+        </div>
+        <div class="shower" id="tank-filter-1">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+        </div>
+        <div class="shower" id="tank-filter-2">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+        </div>
+        <div class="shower" id="tank-filter-3">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+        </div>
+        <div class="shower" id="pre-uv">
+          <i class="fa-solid fa-angles-up" font-weight="300"></i>
+        </div>
+        <div class="shower" id="post-uv">
+          <i class="fa-solid fa-angles-up" font-weight="300"></i>
+        </div>
+        <div class="shower" id="tank-faucet-1">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
+        </div>
+        <div class="shower" id="tank-faucet-2">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+        </div>
+        <div class="shower" id="pre-faucet">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
       </div>
     `;
@@ -183,7 +221,6 @@ Module.register("MMM-Infinistream", {
 
   // Show/hide elements based on the current mode
   updateFlowVisibility: function (parent) {
-    // Utility function to hide or show an element by ID
     function setHidden(id, hide) {
       const el = parent.querySelector('#' + id);
       if (!el) return;
@@ -193,9 +230,9 @@ Module.register("MMM-Infinistream", {
       }
     }
 
-    // Hide everything first
+    // List of all element IDs in the schematic.
     const allIds = [
-      'comp-tank1',
+      'comp-tank',
       'arrow-tank-heater',
       'comp-heater',
       'arrow-heater-shower',
@@ -204,27 +241,20 @@ Module.register("MMM-Infinistream", {
       'comp-filter',
       'arrow-filter-uv',
       'comp-uv',
-      'arrow-uv-tank',
-      'comp-tank2',
+      'arrow-uv-tank-up',
       'arrow-tank-filter',
-      'arrow-tank-uv',
       'arrow-tank-faucet',
       'comp-faucet'
     ];
 
-    allIds.forEach((id) => {
-      setHidden(id, true);
-    });
+    // Hide everything by default
+    allIds.forEach(id => setHidden(id, true));
 
     switch (this.mode) {
       case 'CONNECTING':
         // Show nothing
-        break;
-
-      case 'SHOWER':
-        // Show: tank1, arrow-tank-heater, heater, arrow-heater-shower, shower,
-        // arrow-shower-filter, filter, arrow-filter-uv, uv, arrow-uv-tank, tank2
-        setHidden('comp-tank1', false);
+        // tank -> heater -> shower -> filter -> uv -> arrow-uv-tank-up (loop)
+        setHidden('comp-tank', false);
         setHidden('arrow-tank-heater', false);
         setHidden('comp-heater', false);
         setHidden('arrow-heater-shower', false);
@@ -233,13 +263,45 @@ Module.register("MMM-Infinistream", {
         setHidden('comp-filter', false);
         setHidden('arrow-filter-uv', false);
         setHidden('comp-uv', false);
-        setHidden('arrow-uv-tank', false);
-        setHidden('comp-tank2', false);
+        setHidden('arrow-uv-tank-up', false);
+        // tank -> filter -> faucet
+        setHidden('comp-tank', false);
+        setHidden('arrow-tank-filter', false);
+        setHidden('comp-filter', false);
+        setHidden('arrow-tank-faucet', false);
+        setHidden('comp-faucet', false);
+        // tank -> faucet
+        setHidden('comp-tank', false);
+        setHidden('arrow-tank-faucet', false);
+        setHidden('comp-faucet', false);
+        // tank -> faucet
+        setHidden('comp-tank', false);
+        setHidden('arrow-tank-faucet', false);
+        setHidden('comp-faucet', false)
+        // tank -> uv -> arrow-uv-tank-up
+        setHidden('comp-tank', false);
+        setHidden('arrow-filter-uv', false); // optional if you want a direct path from tank to uv
+        setHidden('comp-uv', false);
+        setHidden('arrow-uv-tank-up', false);;
+        break;
+
+      case 'SHOWER':
+        // tank -> heater -> shower -> filter -> uv -> arrow-uv-tank-up (loop)
+        setHidden('comp-tank', false);
+        setHidden('arrow-tank-heater', false);
+        setHidden('comp-heater', false);
+        setHidden('arrow-heater-shower', false);
+        setHidden('comp-shower', false);
+        setHidden('arrow-shower-filter', false);
+        setHidden('comp-filter', false);
+        setHidden('arrow-filter-uv', false);
+        setHidden('comp-uv', false);
+        setHidden('arrow-uv-tank-up', false);
         break;
 
       case 'FLUSH':
-        // Show: tank1, arrow-tank-filter, filter, arrow-tank-faucet, faucet
-        setHidden('comp-tank1', false);
+        // tank -> filter -> faucet
+        setHidden('comp-tank', false);
         setHidden('arrow-tank-filter', false);
         setHidden('comp-filter', false);
         setHidden('arrow-tank-faucet', false);
@@ -247,23 +309,22 @@ Module.register("MMM-Infinistream", {
         break;
 
       case 'DRAIN':
-        // Show: tank1, arrow-tank-faucet, faucet
-        setHidden('comp-tank1', false);
+        // tank -> faucet
+        setHidden('comp-tank', false);
         setHidden('arrow-tank-faucet', false);
         setHidden('comp-faucet', false);
         break;
 
       case 'SANITIZE':
-        // Show: tank1, arrow-tank-uv, uv, arrow-uv-tank, tank2
-        setHidden('comp-tank1', false);
-        setHidden('arrow-tank-uv', false);
+        // tank -> uv -> arrow-uv-tank-up
+        setHidden('comp-tank', false);
+        setHidden('arrow-filter-uv', false); // optional if you want a direct path from tank to uv
         setHidden('comp-uv', false);
-        setHidden('arrow-uv-tank', false);
-        setHidden('comp-tank2', false);
+        setHidden('arrow-uv-tank-up', false);
         break;
 
       default:
-        // If unknown mode, do nothing
+        // Show nothing if unknown
         break;
     }
   },
