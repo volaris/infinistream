@@ -116,8 +116,8 @@ Module.register("MMM-Infinistream", {
     container.innerHTML = `
       <div class="flow-grid">
         <!-- Single tank -->
-        <div class="tank" id="comp-tank">
-          [ <i class="fa-solid fa-water" font-size=".5em"></i> ]
+        <div class="tank" id="comp-tank" style="font-size:.9em; letter-spacing: -1px;">
+          [ <i class="fa-solid fa-water"></i> ]
         </div>
         <!-- Heater -->
         <div class="heater" id="comp-heater">
