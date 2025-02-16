@@ -1,5 +1,5 @@
 .hidden {
-    display: none;
+    visibility: hidden;
   }
 
   /* Slow spinner for e-ink */
@@ -26,7 +26,8 @@
     display: grid;
     grid-template-columns: repeat(9, auto);
     grid-template-rows: repeat(5, auto);
-    gap: 0.5rem;
+    column-gap: 0.5rem;
+    row-gap: .25rem;
     align-items: center;
     justify-items: center;
   }

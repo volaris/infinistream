@@ -1,20 +1,23 @@
 "use strict";
 
 /*
- *
  * The flows are:
  *  CONNECTING: default mode until an update is received.
  *  SHOWER:     tank -> heater -> shower -> filter -> UV -> tank
  *  FLUSH:      tank -> filter -> faucet
  *  DRAIN:      tank -> faucet
  *  SANITIZE:   tank -> UV -> tank
+ *
+ * - Each flow arrow/indicator and mixer has classes for the modes in which it should be displayed (e.g., "shower", "flush", "drain").
+ * - Main components (tank, heater, shower, filter, uv, faucet) remain visible in all modes.
+ * - CONNECTING mode shows everything for debugging.
  */
 
 Module.register("MMM-Infinistream", {
   defaults: {
-    turbidityLevels: [0, 50, 100], // Configurable turbidity thresholds
-    webhookPort: 8085,            // Port for receiving web hook updates
-    slowSpinner: true             // If true, use a slower spinner animation for e-ink
+    turbidityLevels: [0, 50, 100],
+    webhookPort: 8085,
+    slowSpinner: true
   },
 
   start: function () {
@@ -24,14 +27,19 @@ Module.register("MMM-Infinistream", {
     this.sendSocketNotification("STARTED", { message: "test1" });
   },
 
-  socketNotificationReceived: function(notification, payload) {
-    Log.log(this.name + " received a socket notification: " + notification + " - Payload: " + payload);
+  socketNotificationReceived: function (notification, payload) {
+    Log.log(
+      this.name +
+        " received a socket notification: " +
+        notification +
+        " - Payload: " +
+        JSON.stringify(payload)
+    );
     this.turbidity = payload.turbidity;
     this.mode = payload.mode;
     this.updateDom();
   },
 
-  // Return the main DOM structure
   getDom: function () {
     const wrapper = document.createElement("div");
     wrapper.className = "infinistream";
@@ -42,7 +50,6 @@ Module.register("MMM-Infinistream", {
     modeDiv.appendChild(modeLabel);
     const modeIconEl = this.getModeIconElement();
     modeDiv.appendChild(modeIconEl);
-    // Add a space and the actual mode text
     modeDiv.appendChild(document.createTextNode(" " + this.mode));
     wrapper.appendChild(modeDiv);
 
@@ -58,13 +65,12 @@ Module.register("MMM-Infinistream", {
     const flowDiv = this.getWaterFlowDom();
     wrapper.appendChild(flowDiv);
 
-    // After layout is added, we selectively hide/show elements based on this.mode
+    // Toggle visibility based on mode
     this.updateFlowVisibility(flowDiv);
 
     return wrapper;
   },
 
-  // Return an <i> element for the current mode icon
   getModeIconElement: function () {
     const modeIcons = {
       CONNECTING: ["fa-solid", "fa-spinner"],
@@ -74,11 +80,11 @@ Module.register("MMM-Infinistream", {
       SANITIZE: ["fa-solid", "fa-sun"]
     };
 
-    const iconClasses = modeIcons[this.mode] || ["fa-solid", "fa-question"];
+    const chosen = modeIcons[this.mode] || ["fa-solid", "fa-question"];
     const iEl = document.createElement("i");
-    iconClasses.forEach((c) => iEl.classList.add(c));
+    chosen.forEach((c) => iEl.classList.add(c));
 
-    // If we're in CONNECTING mode, add spin (slow or default)
+    // Slower spin if CONNECTING
     if (this.mode === "CONNECTING") {
       iEl.classList.add("fa-spin");
       if (this.config.slowSpinner) {
@@ -89,7 +95,6 @@ Module.register("MMM-Infinistream", {
     return iEl;
   },
 
-  // Return an <i> element for the current turbidity icon
   getTurbidityIconElement: function () {
     let iconClasses = ["fa-solid", "fa-water"];
     if (this.turbidity >= this.config.turbidityLevels[1]) {
@@ -104,14 +109,9 @@ Module.register("MMM-Infinistream", {
     return iEl;
   },
 
-  // Create a 2D layout with a single tank (shown as [ water ]), a loop back to the tank from UV, etc.
   getWaterFlowDom: function () {
     const container = document.createElement("div");
     container.id = "water-flow-layout";
-
-    // We'll define a grid or flex layout.
-    // Single tank at the top, arrows leading down to heater -> shower -> filter -> arrow to UV -> arrow up to tank.
-    // Also arrows from tank to filter/faucet for flush/drain, etc.
 
     container.innerHTML = `
       <div class="flow-grid">
@@ -140,32 +140,28 @@ Module.register("MMM-Infinistream", {
           <i class="fa-solid fa-faucet"></i>
         </div>
 
-        <!-- Tank-Flame Mixer -->
-        <div class="shower flush" id="tank-flame-mix">
+        <!-- Mixers with mode classes to hide them if flow is inactive -->
+        <div class="shower sanitize flush" id="tank-flame-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <!-- Shower-Filter Mixer -->
         <div class="shower" id="shower-filter-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <!-- Tank-Filter Mixer -->
-        <div class="shower flush" id="tank-filter-mix">
+        <div class="shower flush sanitize" id="tank-filter-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <!-- Filter-Faucet Mixer -->
-        <div class="shower flush" id="filter-faucet-mix">
+        <div class="flush" id="filter-faucet-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <!-- Tank-Faucet Mixer -->
-        <div class="shower flush" id="tank-faucet-mix">
+        <div class="drain" id="tank-faucet-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <!-- Faucet Mixer -->
-        <div class="shower flush" id="faucet-mix">
+        <div class="flush drain" id="faucet-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
 
-        <div class="shower flush drain" id="tank-out">
+        <!-- Flow arrows with classes for modes -->
+        <div class="shower flush  sanitize" id="tank-out">
           <i class="fa-solid fa-angles-left" font-weight="300"></i>
         </div>
         <div class="shower" id="pre-heat">
@@ -180,159 +176,87 @@ Module.register("MMM-Infinistream", {
         <div class="shower" id="post-shower-2">
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="shower" id="pre-filter">
+        <div class="shower flush sanitize" id="pre-filter">
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="shower" id="filter-faucet-1">
+        <div class="flush" id="filter-faucet-1">
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="shower" id="filter-faucet-2">
+        <div class="flush" id="filter-faucet-2">
           <i class="fa-solid fa-angles-up" font-weight="300"></i>
         </div>
-        <div class="shower" id="tank-filter-1">
+        <div class="sanitize flush" id="tank-filter-1">
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower" id="tank-filter-2">
+        <div class="sanitize flush" id="tank-filter-2">
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower" id="tank-filter-3">
+        <div class="sanitize flush" id="tank-filter-3">
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower" id="pre-uv">
+        <div class="shower sanitize" id="pre-uv">
           <i class="fa-solid fa-angles-up" font-weight="300"></i>
         </div>
-        <div class="shower" id="post-uv">
+        <div class="shower sanitize" id="post-uv">
           <i class="fa-solid fa-angles-up" font-weight="300"></i>
         </div>
-        <div class="shower" id="tank-faucet-1">
+        <div class="drain" id="tank-faucet-1">
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="shower" id="tank-faucet-2">
+        <div class="drain" id="tank-faucet-2">
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower" id="pre-faucet">
+        <div class="flush drain" id="pre-faucet">
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
       </div>
     `;
-
     return container;
   },
 
-  // Show/hide elements based on the current mode
   updateFlowVisibility: function (parent) {
-    function setHidden(id, hide) {
-      const el = parent.querySelector('#' + id);
-      if (!el) return;
-      el.classList.remove('hidden');
-      if (hide) {
-        el.classList.add('hidden');
+    // If CONNECTING, show everything for debug
+    if (this.mode === "CONNECTING") {
+      const allItems = parent.querySelectorAll(".flow-grid > div");
+      allItems.forEach((item) => {
+        item.classList.remove("hidden");
+      });
+      return;
+    }
+
+    // Otherwise hide or show items by checking classes
+    const allItems = parent.querySelectorAll(".flow-grid > div");
+    allItems.forEach((item) => {
+      // If it's a main component (id starts with comp-), always show
+      if (item.id.startsWith("comp-")) {
+        item.classList.remove("hidden");
+      } else {
+        // It's a flow arrow or mixer
+        // If it has no recognized mode classes, we used to show it always,
+        // but now mixers have classes too, so we hide them if they're not used.
+        const modeClasses = ["shower", "flush", "drain", "sanitize"];
+        const classes = item.className.split(/\s+/);
+        const hasModeClass = classes.some((c) => modeClasses.includes(c));
+
+        if (!hasModeClass) {
+          // no mode classes => always visible (if you prefer)
+          item.classList.remove("hidden");
+        } else {
+          // show only if it has the current mode in lowercase
+          if (classes.includes(this.mode.toLowerCase())) {
+            item.classList.remove("hidden");
+          } else {
+            item.classList.add("hidden");
+          }
+        }
       }
-    }
-
-    // List of all element IDs in the schematic.
-    const allIds = [
-      'comp-tank',
-      'arrow-tank-heater',
-      'comp-heater',
-      'arrow-heater-shower',
-      'comp-shower',
-      'arrow-shower-filter',
-      'comp-filter',
-      'arrow-filter-uv',
-      'comp-uv',
-      'arrow-uv-tank-up',
-      'arrow-tank-filter',
-      'arrow-tank-faucet',
-      'comp-faucet'
-    ];
-
-    // Hide everything by default
-    allIds.forEach(id => setHidden(id, true));
-
-    switch (this.mode) {
-      case 'CONNECTING':
-        // Show nothing
-        // tank -> heater -> shower -> filter -> uv -> arrow-uv-tank-up (loop)
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-heater', false);
-        setHidden('comp-heater', false);
-        setHidden('arrow-heater-shower', false);
-        setHidden('comp-shower', false);
-        setHidden('arrow-shower-filter', false);
-        setHidden('comp-filter', false);
-        setHidden('arrow-filter-uv', false);
-        setHidden('comp-uv', false);
-        setHidden('arrow-uv-tank-up', false);
-        // tank -> filter -> faucet
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-filter', false);
-        setHidden('comp-filter', false);
-        setHidden('arrow-tank-faucet', false);
-        setHidden('comp-faucet', false);
-        // tank -> faucet
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-faucet', false);
-        setHidden('comp-faucet', false);
-        // tank -> faucet
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-faucet', false);
-        setHidden('comp-faucet', false)
-        // tank -> uv -> arrow-uv-tank-up
-        setHidden('comp-tank', false);
-        setHidden('arrow-filter-uv', false); // optional if you want a direct path from tank to uv
-        setHidden('comp-uv', false);
-        setHidden('arrow-uv-tank-up', false);;
-        break;
-
-      case 'SHOWER':
-        // tank -> heater -> shower -> filter -> uv -> arrow-uv-tank-up (loop)
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-heater', false);
-        setHidden('comp-heater', false);
-        setHidden('arrow-heater-shower', false);
-        setHidden('comp-shower', false);
-        setHidden('arrow-shower-filter', false);
-        setHidden('comp-filter', false);
-        setHidden('arrow-filter-uv', false);
-        setHidden('comp-uv', false);
-        setHidden('arrow-uv-tank-up', false);
-        break;
-
-      case 'FLUSH':
-        // tank -> filter -> faucet
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-filter', false);
-        setHidden('comp-filter', false);
-        setHidden('arrow-tank-faucet', false);
-        setHidden('comp-faucet', false);
-        break;
-
-      case 'DRAIN':
-        // tank -> faucet
-        setHidden('comp-tank', false);
-        setHidden('arrow-tank-faucet', false);
-        setHidden('comp-faucet', false);
-        break;
-
-      case 'SANITIZE':
-        // tank -> uv -> arrow-uv-tank-up
-        setHidden('comp-tank', false);
-        setHidden('arrow-filter-uv', false); // optional if you want a direct path from tank to uv
-        setHidden('comp-uv', false);
-        setHidden('arrow-uv-tank-up', false);
-        break;
-
-      default:
-        // Show nothing if unknown
-        break;
-    }
+    });
   },
 
   getStyles: function () {
     return [
-      'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
-      this.file('MMM-Infinistream.css')
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css",
+      this.file("MMM-Infinistream.css")
     ];
   }
 });
