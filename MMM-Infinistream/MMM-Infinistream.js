@@ -46,8 +46,6 @@ Module.register("MMM-Infinistream", {
 
     // Mode display
     const modeDiv = document.createElement("div");
-    const modeLabel = document.createTextNode("Mode: ");
-    modeDiv.appendChild(modeLabel);
     const modeIconEl = this.getModeIconElement();
     modeDiv.appendChild(modeIconEl);
     modeDiv.appendChild(document.createTextNode(" " + this.mode));
@@ -55,11 +53,17 @@ Module.register("MMM-Infinistream", {
 
     // Turbidity display
     const turbidityDiv = document.createElement("div");
-    const turbidityLabel = document.createTextNode("Turbidity: " + this.turbidity + " ");
+    const turbidityLabel = document.createTextNode("Turbidity: ");
     turbidityDiv.appendChild(turbidityLabel);
     const turbidityIconEl = this.getTurbidityIconElement();
     turbidityDiv.appendChild(turbidityIconEl);
+    const turbidityLevel = document.createTextNode(" (" + this.turbidity + " NTU)");
+    turbidityDiv.appendChild(turbidityLevel);
     wrapper.appendChild(turbidityDiv);
+
+    // space
+    const lineSpace = document.createElement("br");
+    wrapper.appendChild(lineSpace);
 
     // Water Flow Representation
     const flowDiv = this.getWaterFlowDom();
@@ -96,12 +100,12 @@ Module.register("MMM-Infinistream", {
   },
 
   getTurbidityIconElement: function () {
-    let iconClasses = ["fa-solid", "fa-water"];
+    let iconClasses = ["fa-regular", "fa-thumbs-up"];
     if (this.turbidity >= this.config.turbidityLevels[1]) {
-      iconClasses = ["fa-solid", "fa-cloud"];
+      iconClasses = ["fa-solid", "fa-triangle-exclamation"];
     }
     if (this.turbidity >= this.config.turbidityLevels[2]) {
-      iconClasses = ["fa-solid", "fa-smog"];
+      iconClasses = ["fa-solid", "fa-skull-crossbones"];
     }
 
     const iEl = document.createElement("i");
@@ -114,7 +118,7 @@ Module.register("MMM-Infinistream", {
     container.id = "water-flow-layout";
 
     container.innerHTML = `
-      <div class="flow-grid">
+      <div class="flow-grid"">
         <!-- Single tank -->
         <div class="tank" id="comp-tank" style="font-size:.9em; letter-spacing: -1px;">
           [ <i class="fa-solid fa-water"></i> ]
@@ -141,72 +145,97 @@ Module.register("MMM-Infinistream", {
         </div>
 
         <!-- Mixers with mode classes to hide them if flow is inactive -->
-        <div class="shower sanitize flush" id="tank-flame-mix">
+        <div class="shower sanitize flush flow-shrink" id="tank-flame-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <div class="shower" id="shower-filter-mix">
+        <div class="shower flow-shrink" id="shower-filter-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <div class="shower flush sanitize" id="tank-filter-mix">
+        <div class="shower flush sanitize flow-shrink" id="tank-filter-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <div class="flush" id="filter-faucet-mix">
+        <div class="flush flow-shrink" id="filter-faucet-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <div class="drain" id="tank-faucet-mix">
+        <div class="drain flow-shrink" id="tank-faucet-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <div class="flush drain" id="faucet-mix">
+        <div class="flush drain flow-shrink" id="faucet-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
 
         <!-- Flow arrows with classes for modes -->
-        <div class="shower flush  sanitize" id="tank-out">
+        <div class="shower flush sanitize flow-shrink" id="tank-out">
+          <i class="fa-solid fa-angles-left" font-weight="300"></i>
           <i class="fa-solid fa-angles-left" font-weight="300"></i>
         </div>
-        <div class="shower" id="pre-heat">
+        <div class="shower flow-shrink" id="pre-heat">
+          <i class="fa-solid fa-angles-left" font-weight="300"></i>
           <i class="fa-solid fa-angles-left" font-weight="300"></i>
         </div>
-        <div class="shower" id="pre-shower">
+        <div class="shower flow-shrink" id="pre-shower">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower" id="post-shower-1">
+        <div class="shower flow-shrink" id="post-shower-1">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower" id="post-shower-2">
+        <div class="shower flow-shrink" id="post-shower-2">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="shower flush sanitize" id="pre-filter">
+        <div class="shower flush sanitize flow-shrink" id="pre-filter">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="flush" id="filter-faucet-1">
+        <div class="flush flow-shrink" id="filter-faucet-1">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="flush" id="filter-faucet-2">
+        <div class="flush flow-shrink" id="filter-faucet-2">
+          <i class="fa-solid fa-angles-up" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-up" font-weight="300"></i>
         </div>
-        <div class="sanitize flush" id="tank-filter-1">
+        <div class="sanitize flush flow-shrink" id="tank-filter-1">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="sanitize flush" id="tank-filter-2">
+        <div class="sanitize flush flow-shrink" id="tank-filter-2">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="sanitize flush" id="tank-filter-3">
+        <div class="sanitize flush flow-shrink" id="tank-filter-3">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="shower sanitize" id="pre-uv">
+        <div class="shower sanitize flow-shrink" id="pre-uv">
+          <i class="fa-solid fa-angles-up" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-up" font-weight="300"></i>
         </div>
-        <div class="shower sanitize" id="post-uv">
+        <div class="shower sanitize flow-shrink" id="post-uv">
+          <i class="fa-solid fa-angles-up" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-up" font-weight="300"></i>
         </div>
-        <div class="drain" id="tank-faucet-1">
+        <div class="drain flow-shrink" id="tank-faucet-1">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
-        <div class="drain" id="tank-faucet-2">
+        <div class="drain flow-shrink" id="tank-faucet-2">
+          <i class="fa-solid fa-angles-down" font-weight="300"></i>
+          <br />
           <i class="fa-solid fa-angles-down" font-weight="300"></i>
         </div>
-        <div class="flush drain" id="pre-faucet">
+        <div class="flush drain flow-shrink" id="pre-faucet">
+          <i class="fa-solid fa-angles-right" font-weight="300"></i>
           <i class="fa-solid fa-angles-right" font-weight="300"></i>
         </div>
       </div>

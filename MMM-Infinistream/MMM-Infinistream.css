@@ -1,28 +1,39 @@
 .hidden {
     visibility: hidden;
-  }
+}
 
-  /* Slow spinner for e-ink */
-  @keyframes spin-slow {
+/* Slow spinner for e-ink */
+@keyframes spin-slow {
     0% {
-      transform: rotate(0deg);
+        transform: rotate(0deg);
     }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-  .spin-slow {
-    animation: spin-slow 10s linear infinite !important;
-  }
 
-  /* Grid or flex layout for .flow-grid.
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spin-slow {
+    animation: spin-slow 10s linear infinite !important;
+}
+
+.flow-shrink {
+    /* Shrink the icons */
+    font-size: 0.7em;
+    /* Reduce spacing between characters */
+    letter-spacing: -.1em;
+    line-height: -.5em;
+
+}
+
+/* Grid or flex layout for .flow-grid.
    * f<x<t>x
    * v v ^ v
    * s v u x>f
    * v v ^ ^
    * x>x>f>x
    */
-  .flow-grid {
+.flow-grid {
     display: grid;
     grid-template-columns: repeat(9, auto);
     grid-template-rows: repeat(5, auto);
@@ -30,126 +41,154 @@
     row-gap: .25rem;
     align-items: center;
     justify-items: center;
-  }
+    border: .1em solid;
+    border-radius: .75em;
+    padding:.5em .75em .5em .75em;
+}
 
-  /* Example positions (adjust to place items visually) */
-  #comp-tank {
+/* Example positions (adjust to place items visually) */
+#comp-tank {
     font-size: 1.5em;
     grid-column: 5;
     grid-row: 1;
-  }
-  #comp-heater {
+}
+
+#comp-heater {
     font-size: 1.5em;
     grid-column: 1;
     grid-row: 1;
-  }
-  #comp-shower {
+}
+
+#comp-shower {
     font-size: 1.5em;
     grid-column: 1;
     grid-row: 3;
-  }
-  #comp-filter {
+}
+
+#comp-filter {
     font-size: 1.5em;
     grid-column: 5;
     grid-row: 5;
-  }
-  #comp-uv {
+}
+
+#comp-uv {
     font-size: 1.5em;
     grid-column: 5;
     grid-row: 3;
-  }
-  #comp-faucet {
+}
+
+#comp-faucet {
     font-size: 1.5em;
     grid-column: 9;
     grid-row: 3;
-  }
+}
 
-  #tank-flame-mix {
+#tank-flame-mix {
     grid-column: 3;
     grid-row: 1;
-  }
-  #shower-filter-mix {
+}
+
+#shower-filter-mix {
     grid-column: 1;
     grid-row: 5;
-  }
-  #tank-filter-mix {
+}
+
+#tank-filter-mix {
     grid-column: 3;
     grid-row: 5;
-  }
-  #filter-faucet-mix {
+}
+
+#filter-faucet-mix {
     grid-column: 7;
     grid-row: 5;
-  }
-  #tank-faucet-mix {
+}
+
+#tank-faucet-mix {
     grid-column: 7;
     grid-row: 1;
-  }
-  #faucet-mix {
+}
+
+#faucet-mix {
     grid-column: 7;
     grid-row: 3;
-  }
+}
 
-  #tank-out {
+#tank-out {
     grid-column: 4;
     grid-row: 1;
-  }
-  #pre-heat {
+}
+
+#pre-heat {
     grid-column: 2;
     grid-row: 1;
-  }
-  #pre-shower {
+}
+
+#pre-shower {
     grid-column: 1;
     grid-row: 2;
-  }
-  #post-shower-1 {
+}
+
+#post-shower-1 {
     grid-column: 1;
     grid-row: 4;
-  }
-  #post-shower-2 {
+}
+
+#post-shower-2 {
     grid-column: 2;
     grid-row: 5;
-  }
-  #pre-filter {
+}
+
+#pre-filter {
     grid-column: 4;
     grid-row: 5;
-  }
-  #filter-faucet-1 {
+}
+
+#filter-faucet-1 {
     grid-column: 6;
     grid-row: 5;
-  }
-  #filter-faucet-2 {
+}
+
+#filter-faucet-2 {
     grid-column: 7;
     grid-row: 4;
-  }
-  #tank-filter-1 {
+}
+
+#tank-filter-1 {
     grid-column: 3;
     grid-row: 2;
-  }
-  #tank-filter-2 {
+}
+
+#tank-filter-2 {
     grid-column: 3;
     grid-row: 3;
-  }
-  #tank-filter-3 {
+}
+
+#tank-filter-3 {
     grid-column: 3;
     grid-row: 4;
-  }
-  #pre-uv {
+}
+
+#pre-uv {
     grid-column: 5;
     grid-row: 4;
-  }
-  #post-uv {
+}
+
+#post-uv {
     grid-column: 5;
     grid-row: 2;
-  }
-  #tank-faucet-1 {
+}
+
+#tank-faucet-1 {
     grid-column: 6;
     grid-row: 1;
-  }
-  #tank-faucet-2 {
+}
+
+#tank-faucet-2 {
     grid-column: 7;
     grid-row: 2;
-  }
-  #pre-faucet {
+}
+
+#pre-faucet {
     grid-column: 8;
     grid-row: 3;
-  }
+}
