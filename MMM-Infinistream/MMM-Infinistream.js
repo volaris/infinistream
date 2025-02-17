@@ -246,9 +246,9 @@ Module.register("MMM-Infinistream", {
   updateFlowVisibility: function (parent) {
     // If CONNECTING, show everything for debug
     if (this.mode === "CONNECTING") {
-      const allItems = parent.querySelectorAll(".flow-grid > div");
+      const allItems = parent.querySelectorAll(".flow-grid");
       allItems.forEach((item) => {
-        item.classList.remove("hidden");
+        item.classList.add("hidden");
       });
       return;
     }
