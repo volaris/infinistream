@@ -22,8 +22,7 @@
     font-size: 0.7em;
     /* Reduce spacing between characters */
     letter-spacing: -.1em;
-    line-height: -.5em;
-
+    line-height: 0;
 }
 
 /* Grid or flex layout for .flow-grid.
@@ -43,7 +42,8 @@
     justify-items: center;
     border: .1em solid;
     border-radius: .75em;
-    padding:.5em .75em .5em .75em;
+    padding: .5em .75em .5em .75em;
+    line-height: 0;
 }
 
 /* Example positions (adjust to place items visually) */
