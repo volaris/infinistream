@@ -171,7 +171,7 @@ GPIO_DIR = {
     'DIR_IN'    : 1,
 }
 
-PIN_MODE = {
+GPIO_MODE = {
     "MODE_ANALOG"   : 0,
     "MODE_DIGITAL"  : 1,
 }
@@ -211,6 +211,55 @@ class ADS1263:
         data = config.spi_readbytes(1)
         config.digital_write(self.cs_pin, GPIO.HIGH)#cs 1
         return data
+
+    def ADS1263_GPIOChannelMode(self, channel, mode, direction=0):
+        data = self.ADS1263_ReadData(ADS1263_REG["REG_GPIOCON"])
+        bit = mode << channel
+        if mode:
+            data |= bit
+        else:
+            data &= ~bit
+        self.ADS1263_WriteReg(ADS1263_REG["REG_GPIOCON"], data)
+        if(self.ADS1263_ReadData(ADS1263_REG['REG_GPIOCON']) == data):
+            print("REG_GPIOCON success")
+        else:
+            print("REG_GPIOCON unsuccess")
+
+        if mode == GPIO_MODE["MODE_DIGITAL"]:
+            data = self.ADS1263_ReadData(ADS1263_REG["REG_GPIODIR"])
+            bit = direction << channel
+            if direction:
+                data |= bit
+            else:
+                data &= ~bit
+            self.ADS1263_WriteReg(ADS1263_REG["REG_GPIODIR"], data)
+            if(self.ADS1263_ReadData(ADS1263_REG['REG_GPIODIR']) == data):
+                print("REG_GPIODIR success")
+            else:
+                print("REG_GPIODIR unsuccess")
+
+    def ADS1263_DigitalRead(self, channel):
+        """
+        Reads the digital state of the specified GPIO channel.
+        Returns 0 (low) or 1 (high).
+        """
+        data = self.ADS1263_ReadData(ADS1263_REG["REG_GPIODAT"])
+        # data is a list of one byte
+        value = (data[0] >> channel) & 0x01
+        return value
+
+    def ADS1263_DigitalWrite(self, channel, value):
+        """
+        Sets the digital state of the specified GPIO channel.
+        value: 0 (low) or 1 (high)
+        """
+        data = self.ADS1263_ReadData(ADS1263_REG["REG_GPIODAT"])
+        current = data[0]
+        if value:
+            current |= (1 << channel)
+        else:
+            current &= ~(1 << channel)
+        self.ADS1263_WriteReg(ADS1263_REG["REG_GPIODAT"], current)
 
 
     # Check Data

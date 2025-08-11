@@ -1,3 +1,6 @@
 spidev
 RPi.GPIO
 devantech-eth
+click
+pytest
+pytest-bdd

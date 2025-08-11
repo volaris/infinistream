@@ -3,106 +3,183 @@ import time
 
 import click
 
-import lib8relind
+import devantech_eth
 
-from .hw_conf import POST_FILTER_VALVE, SANI_LOOP_VALVE, FLUSH_VALVE, DRAIN_VALVE, DRAIN_PUMP_POWER, \
-    SUPPLY_PUMP_POWER, UVC_POWER, MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED
+from src.hw_conf import (
+    DEVANTECH_IP, DEVANTECH_PORT,
+    FLOW_IN_SENSOR, FLOW_OUT_SENSOR, TURBIDITY_SENSOR,
+    MODE_SELECT_CHANNELS,
+    POST_FILTER_VALVE, SANI_LOOP_VALVE, FLUSH_VALVE, DRAIN_VALVE,
+    DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
+    MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
+    RelayChannel
+)
 
 
-def safe():
-    lib8relind.set_all(0,0)
-    lib8relind.set_all(1,0)
+class Controller:
+    def __init__(self, ads, gpio_mode):
+        self.ads = ads
+        self.ads.ADS1263_init_ADC1()
+        # Set mode select channels to GPIO digital mode
+        for din in MODE_SELECT_CHANNELS:
+            self.ads.ADS1263_GPIOChannelMode(din.channel, gpio_mode["MODE_DIGITAL"], 1)
+        self.devantech = devantech_eth
 
-def read_sensors():
-    # read turbidity
-    # read UV-C flow
-    # read out flow
-    # read selector switch
-    return
+    def safe(self):
+        self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
+        self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
+        self.set_relay_channel(FLUSH_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 0)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 0)
+        self.set_relay_channel(UVC_POWER, 0)
 
-def set_drain():
-    lib8relind.set(**POST_FILTER_VALVE, CLOSED)
-    lib8relind.set(**SANI_LOOP_VALVE, CLOSED)
-    lib8relind.set(**FLUSH_VALVE, CLOSED)
-    lib8relind.set(**DRAIN_VALVE, OPEN)
+    def read_sensors(self):
+        # Read mode select from GPIOs (digital)
+        mode_bits = []
+        for din in MODE_SELECT_CHANNELS:
+            val = self.ads.ADS1263_DigitalRead(din.channel)
+            mode_bits.append(val)
+        mode_select = self.decode_mode_bits(mode_bits)
 
-def set_flush():
-    lib8relind.set(**POST_FILTER_VALVE, CLOSED)
-    lib8relind.set(**SANI_LOOP_VALVE, CLOSED)
-    lib8relind.set(**FLUSH_VALVE, OPEN)
-    lib8relind.set(**DRAIN_VALVE, CLOSED)
+        # Read flow sensors and turbidity as analog, apply calibration
+        flow_in_raw = self.ads.ADS1263_GetChannalValue(FLOW_IN_SENSOR.channel)
+        flow_out_raw = self.ads.ADS1263_GetChannalValue(FLOW_OUT_SENSOR.channel)
+        turbidity_raw = self.ads.ADS1263_GetChannalValue(TURBIDITY_SENSOR.channel)
 
-def set_shower():
-    lib8relind.set(**POST_FILTER_VALVE, OPEN)
-    lib8relind.set(**SANI_LOOP_VALVE, CLOSED)
-    lib8relind.set(**FLUSH_VALVE, CLOSED)
-    lib8relind.set(**DRAIN_VALVE, CLOSED)
+        flow_in = self.decode_analog(flow_in_raw, FLOW_IN_SENSOR)
+        flow_out = self.decode_analog(flow_out_raw, FLOW_OUT_SENSOR)
+        turbidity = self.decode_analog(turbidity_raw, TURBIDITY_SENSOR)
 
-def set_sani():
-    lib8relind.set(**POST_FILTER_VALVE, CLOSED)
-    lib8relind.set(**SANI_LOOP_VALVE, OPEN)
-    lib8relind.set(**FLUSH_VALVE, CLOSED)
-    lib8relind.set(**DRAIN_VALVE, CLOSED)
+        return type('Sensors', (), {
+            'mode_select': mode_select,
+            'flow_in': flow_in,
+            'flow_out': flow_out,
+            'turbidity': turbidity
+        })()
 
-def set_mode(mode_select):
-    if mode_select == MODE_DRAIN:
-        set_drain()
-    elif mode_select == MODE_FLUSH:
-        set_flush()
-    elif mode_select == MODE_SHOWER:
-        set_shower()
-    elif mode_select == MODE_SANI:
-        set_sani()
-    else:
-        safe()
-
-def display_status():
-    pass
-
-def static_vars(**kwargs):
-    def decorate(func):
-        for k in kwargs:
-            setattr(func, k, kwargs[k])
-        return func
-    return decorate
-
-@static_vars(last_flow_detected = datetime.datetime.now(),
-             sanitize_off_time = datetime.datetime.now(),
-             sani_on = False)
-def determine_derived_mode(sensors):
-    seconds_in_minute = 60
-    seconds_in_hour = 60 * seconds_in_minute
-    now = datetime.datetime.now()
-
-    if sensors.flow_out > 0:
-        determine_derived_mode.last_flow_detected = now
-        time_since_flow = now - determine_derived_mode.last_flow_detected
-
-    if sensors.mode_select == MODE_SHOWER:
-        if time_since_flow.total_seconds > (12 * seconds_in_hour):
-            if determine_derived_mode.sani_on and now > determine_derived_mode.sanitize_off_time:
-                time_since_flow = now - determine_derived_mode.last_flow_detected
-                determine_derived_mode.sani_on = False
-                return MODE_SHOWER
-            determine_derived_mode.sani_on = True
-            determine_derived_mode.sanitize_off_time = now + (5 * seconds_in_minute)
+    def decode_mode_bits(self, bits):
+        val = (bits[0] << 2) | (bits[1] << 1) | bits[2]
+        if val == 0b000:
+            return MODE_DRAIN
+        elif val == 0b001:
+            return MODE_FLUSH
+        elif val == 0b010:
+            return MODE_SHOWER
+        elif val == 0b100:
             return MODE_SANI
-        return MODE_SHOWER
-    else:
-        determine_derived_mode.sani_on = False
-        return sensors.mode_select
+        else:
+            return MODE_DRAIN  # fallback
 
-click.command()
+    def decode_analog(self, raw, config):
+        # Convert ADC value to sensor units using calibration
+        value = (raw / config.full_scale_adc) * config.full_scale_sensor + config.offset
+        return value
+
+    def set_relay_channel(self, channel: RelayChannel, state):
+        self.devantech.setDigitalState(channel.channel, 0, state)
+
+    def set_drain(self):
+        self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
+        self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
+        self.set_relay_channel(FLUSH_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_VALVE, OPEN)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 1)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 0)
+        self.set_relay_channel(UVC_POWER, 0)
+
+    def set_flush(self):
+        self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
+        self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
+        self.set_relay_channel(FLUSH_VALVE, OPEN)
+        self.set_relay_channel(DRAIN_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 1)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 1)
+        self.set_relay_channel(UVC_POWER, 0)
+
+    def set_shower(self):
+        self.set_relay_channel(POST_FILTER_VALVE, OPEN)
+        self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
+        self.set_relay_channel(FLUSH_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 1)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 1)
+        self.set_relay_channel(UVC_POWER, 1)
+
+    def set_sani(self):
+        self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
+        self.set_relay_channel(SANI_LOOP_VALVE, OPEN)
+        self.set_relay_channel(FLUSH_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_VALVE, CLOSED)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 1)
+        self.set_relay_channel(UVC_POWER, 0)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 0)
+
+    def set_mode(self, mode_select):
+        if mode_select == MODE_DRAIN:
+            self.set_drain()
+        elif mode_select == MODE_FLUSH:
+            self.set_flush()
+        elif mode_select == MODE_SHOWER:
+            self.set_shower()
+        elif mode_select == MODE_SANI:
+            self.set_sani()
+        else:
+            self.safe()
+
+    def display_status(self, mode, sensors):
+        print(f"Mode: {mode}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
+
+    @staticmethod
+    def static_vars(**kwargs):
+        def decorate(func):
+            for k in kwargs:
+                setattr(func, k, kwargs[k])
+            return func
+        return decorate
+
+    @static_vars(last_flow_detected = datetime.datetime.now(),
+                sanitize_off_time = datetime.datetime.now(),
+                sani_on = False)
+    def determine_derived_mode(sensors):
+        seconds_in_minute = 60
+        seconds_in_hour = 60 * seconds_in_minute
+        now = datetime.datetime.now()
+
+        if sensors.flow_out > 0.1:
+            Controller.determine_derived_mode.last_flow_detected = now
+
+        time_since_flow = now - Controller.determine_derived_mode.last_flow_detected
+
+        if sensors.mode_select == MODE_SHOWER:
+            if time_since_flow.total_seconds() > (12 * seconds_in_hour):
+                if Controller.determine_derived_mode.sani_on and now > Controller.determine_derived_mode.sanitize_off_time:
+                    time_since_flow = now - Controller.determine_derived_mode.last_flow_detected
+                    Controller.determine_derived_mode.sani_on = False
+                    return MODE_SHOWER
+                Controller.determine_derived_mode.sani_on = True
+                Controller.determine_derived_mode.sanitize_off_time = now + datetime.timedelta(seconds=5 * seconds_in_minute)
+                return MODE_SANI
+            return MODE_SHOWER
+        else:
+            Controller.determine_derived_mode.sani_on = False
+            return sensors.mode_select
+
+    def step(self):
+        sensors = self.read_sensors()
+        mode = Controller.determine_derived_mode(sensors)
+        self.set_mode(mode)
+        self.display_status(mode, sensors)
+
+@click.command()
 def run():
-    safe()
+    from ADS1263 import ADS1263, GPIO_MODE  # Import only here
+    controller = Controller(ADS1263(), GPIO_MODE)
     previous_mode = None
 
     while True:
-        sensors = read_sensors()
-        mode = determine_derived_mode(sensors)
-        set_mode(mode)
-        display_status(mode, sensors)
-
+        controller.step()
+        time.sleep(1)
 
 if __name__ == "__main__":
     run()
