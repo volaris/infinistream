@@ -1,71 +1,97 @@
-# MMM-Template
-Use this template for creating new MagicMirror² modules.
+# MMM-Infinistream
 
-See the [wiki page](https://github.com/Dennis-Rosenbaum/MMM-Template/wiki) for an in depth overview of how to get started.
+A [MagicMirror²](https://github.com/MagicMirrorOrg/MagicMirror) module that displays
+the live status of an Infinistream recirculating greywater filter system.
 
-# MMM-Template
-
-![Example of MMM-Template](./example_1.png)
-
-[Module description]
+The module receives updates from the Infinistream Raspberry Pi controller over an HTTP
+webhook and renders the current operating mode, water turbidity, and an animated flow
+diagram of the system.
 
 ## Installation
 
-### Install
-
-In your terminal, go to your [MagicMirror²][mm] Module folder and clone MMM-Template:
+Clone or copy this directory into your MagicMirror `modules/` folder:
 
 ```bash
 cd ~/MagicMirror/modules
-git clone [GitHub url]
+git clone <repo-url> MMM-Infinistream
+cd MMM-Infinistream
+npm install
 ```
 
-### Update
+## MagicMirror Configuration
+
+Add the module to the `modules` array in `config/config.js`:
+
+```js
+{
+    module: "MMM-Infinistream",
+    position: "lower_third"
+}
+```
+
+With all options:
+
+```js
+{
+    module: "MMM-Infinistream",
+    position: "lower_third",
+    config: {
+        turbidityLevels: [0, 50, 100],
+        webhookPort: 8085,
+        slowSpinner: true
+    }
+}
+```
+
+## Configuration Options
+
+| Option            | Type      | Default        | Description                                                                 |
+|-------------------|-----------|----------------|-----------------------------------------------------------------------------|
+| `turbidityLevels` | `number[]`| `[0, 50, 100]` | NTU thresholds for turbidity icon tiers (clean / warning / unsafe)          |
+| `webhookPort`     | `number`  | `8085`         | Port on which the node_helper listens for POST updates from the controller  |
+| `slowSpinner`     | `boolean` | `true`         | Use a slower CSS spin animation on the CONNECTING spinner icon              |
+
+### Turbidity Icon Tiers
+
+| NTU                | Icon                        |
+|--------------------|-----------------------------|
+| Below level[1]     | Thumbs up (clean)           |
+| level[1]–level[2]  | Warning triangle            |
+| level[2] and above | Skull & crossbones (unsafe) |
+
+## Webhook API
+
+The module exposes a POST endpoint that the Infinistream controller calls after each
+control cycle:
+
+```text
+POST /shower-update
+Content-Type: application/json
+
+{ "mode": "SHOWER", "turbidity": 12.4 }
+```
+
+| Field       | Type   | Valid values                              |
+|-------------|--------|-------------------------------------------|
+| `mode`      | string | `SHOWER`, `DRAIN`, `FLUSH`, `SANITIZE`    |
+| `turbidity` | number | Floating-point NTU value, ≥ 0             |
+
+Returns `200` on success, `400` if the payload is missing required fields.
+
+## Display
+
+The module renders three sections:
+
+- **Mode** — a Font Awesome icon and the mode name string. While waiting for the first
+  update the module shows a slowly-spinning gear and the label `CONNECTING`.
+- **Turbidity** — a tiered icon and the raw NTU reading.
+- **Flow diagram** — a schematic of the full system (tank, heater, shower, filter, UV
+  sanitizer, faucet). Flow path arrows and junction icons are shown only for the active
+  mode; permanent components are always visible.
+
+## Developer Commands
 
 ```bash
-cd ~/MagicMirror/modules/MMM-Template
-git pull
+npm run lint        # Check linting and formatting
+npm run lint:fix    # Auto-fix linting issues
 ```
-
-## Using the module
-
-To use this module, add it to the modules array in the `config/config.js` file:
-
-```js
-    {
-        module: 'MMM-Template',
-        position: 'lower_third'
-    },
-```
-
-Or you could use all the options:
-
-```js
-    {
-        module: 'MMM-Template',
-        position: 'lower_third',
-        config: {
-            exampleContent: 'Welcome world'
-        }
-    },
-```
-
-## Configuration options
-
-Option|Possible values|Default|Description
-------|------|------|-----------
-`exampleContent`|`string`|not available|The content to show on the page
-
-## Sending notifications to the module
-
-Notification|Description
-------|-----------
-`TEMPLATE_RANDOM_TEXT`|Payload must contain the text that needs to be shown on this module
-
-## Developer commands
-
-- `npm install` - Install devDependencies like ESLint.
-- `npm run lint` - Run linting and formatter checks.
-- `npm run lint:fix` - Fix linting and formatter issues.
-
-[mm]: https://github.com/MagicMirrorOrg/MagicMirror
