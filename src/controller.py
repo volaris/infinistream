@@ -2,6 +2,7 @@ import datetime
 import time
 
 import click
+import requests
 
 import devantech_eth
 
@@ -12,6 +13,7 @@ from src.hw_conf import (
     POST_FILTER_VALVE, SANI_LOOP_VALVE, FLUSH_VALVE, DRAIN_VALVE,
     DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
     MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
+    MODE_NAMES, MAGICMIRROR_WEBHOOK_URL,
     RelayChannel
 )
 
@@ -128,7 +130,16 @@ class Controller:
             self.safe()
 
     def display_status(self, mode, sensors):
-        print(f"Mode: {mode}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
+        mode_name = MODE_NAMES.get(mode, str(mode))
+        print(f"Mode: {mode_name}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
+        try:
+            requests.post(
+                MAGICMIRROR_WEBHOOK_URL,
+                json={"mode": mode_name, "turbidity": round(sensors.turbidity, 2)},
+                timeout=2,
+            )
+        except requests.exceptions.RequestException:
+            pass
 
     @staticmethod
     def static_vars(**kwargs):

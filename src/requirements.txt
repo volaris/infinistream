@@ -2,5 +2,6 @@ spidev
 RPi.GPIO
 devantech-eth
 click
+requests
 pytest
 pytest-bdd

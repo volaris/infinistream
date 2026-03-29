@@ -57,3 +57,14 @@ Feature: Shower panel controller modes and transitions
     And flow out sensor reads below threshold for a long period
     When the controller reads sensors and determines mode after timeout
     Then the controller should set actuators for "flush"
+
+  Scenario: Controller posts mode and turbidity to the display webhook
+    Given the mode select GPIOs indicate "shower"
+    And flow out sensor reads above threshold
+    When the controller steps
+    Then the display webhook should receive mode "SHOWER" and the current turbidity
+
+  Scenario: Controller posts the correct mode name string for each mode
+    Given the mode select GPIOs indicate "sanitize"
+    When the controller steps
+    Then the display webhook should receive mode "SANITIZE"

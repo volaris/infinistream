@@ -70,5 +70,15 @@ MODE_FLUSH  = 1
 MODE_DRAIN  = 2
 MODE_SHOWER = 3
 
+MODE_NAMES = {
+    MODE_DRAIN:  "DRAIN",
+    MODE_FLUSH:  "FLUSH",
+    MODE_SHOWER: "SHOWER",
+    MODE_SANI:   "SANITIZE",
+}
+
 OPEN   = 1
 CLOSED = 0
+
+# MagicMirror² display webhook
+MAGICMIRROR_WEBHOOK_URL = "http://localhost:8085/shower-update"

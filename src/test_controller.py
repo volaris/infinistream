@@ -6,12 +6,14 @@ import datetime
 
 from src.controller import Controller
 import src.hw_conf
+import src.controller as controller_module
 
 scenarios(os.path.join(os.path.dirname(__file__), "test_controller.feature"))
 
 @pytest.fixture
 def controller():
-    with patch("src.controller.devantech_eth") as mock_devantech:
+    with patch("src.controller.devantech_eth") as mock_devantech, \
+         patch("src.controller.requests") as mock_requests:
         class MockADS:
             def ADS1263_init_ADC1(self): pass
             def ADS1263_GPIOChannelMode(self, channel, mode, direction): pass
@@ -21,6 +23,7 @@ def controller():
         gpio_mode = {"MODE_DIGITAL": 1}
         ctrl = Controller(ads, gpio_mode)
         ctrl.devantech = mock_devantech
+        ctrl.mock_requests = mock_requests
         # Set static vars on the static method, not the instance
         Controller.determine_derived_mode.last_flow_detected = datetime.datetime.now()
         Controller.determine_derived_mode.sanitize_off_time = datetime.datetime.now()
@@ -129,6 +132,10 @@ def set_unrecognized_mode(controller):
     # 0b111 = 7, not a valid pattern; decode_mode_bits falls back to MODE_DRAIN
     controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: 1
 
+@when("the controller steps")
+def controller_step(controller):
+    controller.step()
+
 @given("the sanitize cycle is active and has expired")
 def set_sanitize_expired(controller):
     Controller.determine_derived_mode.last_flow_detected = (
@@ -138,6 +145,21 @@ def set_sanitize_expired(controller):
     Controller.determine_derived_mode.sanitize_off_time = (
         datetime.datetime.now() - datetime.timedelta(seconds=1)
     )
+
+@then(parsers.parse('the display webhook should receive mode "{mode}" and the current turbidity'))
+def check_webhook_mode_and_turbidity(controller, mode):
+    call_args = controller.mock_requests.post.call_args
+    assert call_args is not None, "requests.post was not called"
+    payload = call_args.kwargs["json"]
+    assert payload["mode"] == mode
+    assert "turbidity" in payload
+
+@then(parsers.parse('the display webhook should receive mode "{mode}"'))
+def check_webhook_mode(controller, mode):
+    call_args = controller.mock_requests.post.call_args
+    assert call_args is not None, "requests.post was not called"
+    payload = call_args.kwargs["json"]
+    assert payload["mode"] == mode
 
 # --- Direct unit tests (non-BDD) ---
 
@@ -166,6 +188,19 @@ def test_analog_calibration_midscale(controller):
     half_raw = src.hw_conf.FLOW_OUT_SENSOR.full_scale_adc // 2
     result = controller.decode_analog(half_raw, src.hw_conf.FLOW_OUT_SENSOR)
     assert abs(result - src.hw_conf.FLOW_OUT_SENSOR.full_scale_sensor / 2) < 0.01
+
+def test_webhook_posts_correct_url(controller):
+    """display_status posts to MAGICMIRROR_WEBHOOK_URL."""
+    controller.step()
+    call_args = controller.mock_requests.post.call_args
+    assert call_args.args[0] == src.hw_conf.MAGICMIRROR_WEBHOOK_URL
+
+def test_webhook_connection_failure_does_not_crash_controller(controller):
+    """A failed webhook POST is swallowed so the control loop continues."""
+    import requests as real_requests
+    controller.mock_requests.post.side_effect = real_requests.exceptions.ConnectionError
+    controller.mock_requests.exceptions = real_requests.exceptions
+    controller.step()  # should not raise
 
 def test_flow_threshold_above_boundary_updates_timestamp(controller):
     """The first ADC count that decodes above 0.1 L/min updates last_flow_detected."""
