@@ -23,15 +23,15 @@
 
 ### Analog Input Channels
 
-| Channel | Signal           | Sensor       | Units  | Full-Scale Value |
-|---------|------------------|--------------|--------|-----------------|
-| 0       | Flow in          | Gredia GR-S403 | L/min | 20.0            |
-| 1       | Flow out         | Gredia GR-S403 | L/min | 20.0            |
-| 2       | Turbidity        | DFRobot KS0414 | NTU   | 4000.0          |
+| Channel | Signal           | Sensor         | Units  | Full-Scale Value |
+|---------|------------------|----------------|--------|------------------|
+| 0       | Flow in          | Gredia GR-S403 | L/min  | 20.0             |
+| 1       | Flow out         | Gredia GR-S403 | L/min  | 20.0             |
+| 2       | Turbidity        | DFRobot KS0414 | NTU    | 4000.0           |
 
 #### Calibration Formula
 
-```
+```python
 sensor_value = (raw_adc / full_scale_adc) * full_scale_sensor + offset
 ```
 
@@ -45,11 +45,11 @@ sensor_value = (raw_adc / full_scale_adc) * full_scale_sensor + offset
 Channels 3, 4, and 5 are configured as digital GPIO inputs. Each reads a single bit
 (0 or 1) from the rotary mode-select switch.
 
-| Channel | Bit Position | Description      |
-|---------|-------------|------------------|
-| 3       | Bit 2 (MSB) | Mode select bit 2 |
-| 4       | Bit 1       | Mode select bit 1 |
-| 5       | Bit 0 (LSB) | Mode select bit 0 |
+| Channel | Bit Position | Description       |
+|---------|--------------|-------------------|
+| 3       | Bit 2 (MSB)  | Mode select bit 2 |
+| 4       | Bit 1        | Mode select bit 1 |
+| 5       | Bit 0 (LSB)  | Mode select bit 0 |
 
 Bit assembly: `val = (ch3 << 2) | (ch4 << 1) | ch5`
 
@@ -61,24 +61,24 @@ The relay board is accessed over Ethernet using the `devantech-eth` Python libra
 
 ### Network Configuration
 
-| Parameter | Value           |
-|-----------|-----------------|
-| IP        | `192.168.1.50`  |
-| Port      | `17123`         |
+| Parameter | Value                           |
+|-----------|---------------------------------|
+| IP        | `192.168.1.50`                  |
+| Port      | `17123`                         |
 | Protocol  | TCP (Devantech binary protocol) |
 
 ### Relay Channel Assignments
 
 | Relay | Name               | Actuator             | Active state |
-|-------|--------------------|----------------------|-------------|
-| 1     | POST_FILTER_VALVE  | Post-filter valve    | OPEN = 1    |
-| 2     | SANI_LOOP_VALVE    | Sanitize loop valve  | OPEN = 1    |
-| 3     | FLUSH_VALVE        | Flush valve          | OPEN = 1    |
-| 4     | DRAIN_VALVE        | Drain valve          | OPEN = 1    |
-| 5     | DRAIN_PUMP_POWER   | Drain pump           | ON = 1      |
-| 6     | SUPPLY_PUMP_POWER  | Supply pump          | ON = 1      |
-| 7     | UVC_POWER          | UV-C light           | ON = 1      |
-| 8     | (unassigned)       | —                    | —           |
+|-------|--------------------|----------------------|--------------|
+| 1     | POST_FILTER_VALVE  | Post-filter valve    | OPEN = 1     |
+| 2     | SANI_LOOP_VALVE    | Sanitize loop valve  | OPEN = 1     |
+| 3     | FLUSH_VALVE        | Flush valve          | OPEN = 1     |
+| 4     | DRAIN_VALVE        | Drain valve          | OPEN = 1     |
+| 5     | DRAIN_PUMP_POWER   | Drain pump           | ON = 1       |
+| 6     | SUPPLY_PUMP_POWER  | Supply pump          | ON = 1       |
+| 7     | UVC_POWER          | UV-C light           | ON = 1       |
+| 8     | (unassigned)       | —                    | —            |
 
 Relay state is set via `devantech_eth.setDigitalState(channel, 0, state)`.
 
@@ -107,10 +107,10 @@ At import time the module reads `/proc/cpuinfo` and injects the appropriate SPI/
 implementation into the module namespace.
 
 | Platform     | Detection string in `/proc/cpuinfo` | Implementation class |
-|--------------|--------------------------------------|----------------------|
-| Raspberry Pi | `Raspberry Pi`                       | `RaspberryPi`        |
-| Jetson Nano  | `NVIDIA Jetson Nano`                 | `JetsonNano`         |
-| Other / test | (no match)                           | `MockHardware`       |
+|--------------|-------------------------------------|----------------------|
+| Raspberry Pi | `Raspberry Pi`                      | `RaspberryPi`        |
+| Jetson Nano  | `NVIDIA Jetson Nano`                | `JetsonNano`         |
+| Other / test | (no match)                          | `MockHardware`       |
 
 `MockHardware` provides no-op stubs for all SPI/GPIO calls, allowing the controller
 logic to run and be tested on non-embedded hardware.
@@ -124,7 +124,7 @@ after each control loop iteration.
 
 ### Request
 
-```
+```text
 POST /shower-update
 Content-Type: application/json
 ```
@@ -136,10 +136,10 @@ Content-Type: application/json
 }
 ```
 
-| Field       | Type   | Required | Valid values                        |
-|-------------|--------|----------|-------------------------------------|
+| Field       | Type   | Required | Valid values                                   |
+|-------------|--------|----------|------------------------------------------------|
 | `mode`      | string | Yes      | `"SHOWER"`, `"DRAIN"`, `"FLUSH"`, `"SANITIZE"` |
-| `turbidity` | number | Yes      | Floating-point, units NTU, ≥ 0      |
+| `turbidity` | number | Yes      | Floating-point, units NTU, ≥ 0                 |
 
 ### Response
 
