@@ -97,7 +97,7 @@ def check_actuators(controller, mode):
             mock_call(src.hw_conf.FLUSH_VALVE.channel, 0, src.hw_conf.CLOSED),
             mock_call(src.hw_conf.DRAIN_VALVE.channel, 0, src.hw_conf.CLOSED),
             mock_call(src.hw_conf.SUPPLY_PUMP_POWER.channel, 0, 1),
-            mock_call(src.hw_conf.UVC_POWER.channel, 0, 0),
+            mock_call(src.hw_conf.UVC_POWER.channel, 0, 1),
             mock_call(src.hw_conf.DRAIN_PUMP_POWER.channel, 0, 0),
         ],
     }
@@ -123,3 +123,78 @@ def decode_analog(controller):
 @then("the result should be the sensor full scale")
 def check_calibration(controller):
     assert controller.analog_value == src.hw_conf.FLOW_IN_SENSOR.full_scale_sensor
+
+@given("the mode select GPIOs indicate an unrecognized pattern")
+def set_unrecognized_mode(controller):
+    # 0b111 = 7, not a valid pattern; decode_mode_bits falls back to MODE_DRAIN
+    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: 1
+
+@given("the sanitize cycle is active and has expired")
+def set_sanitize_expired(controller):
+    Controller.determine_derived_mode.last_flow_detected = (
+        datetime.datetime.now() - datetime.timedelta(hours=13)
+    )
+    Controller.determine_derived_mode.sani_on = True
+    Controller.determine_derived_mode.sanitize_off_time = (
+        datetime.datetime.now() - datetime.timedelta(seconds=1)
+    )
+
+# --- Direct unit tests (non-BDD) ---
+
+def test_safe_state_deenergizes_all_actuators(controller):
+    """safe() closes all valves and cuts power to all devices."""
+    from unittest.mock import call as mock_call
+    controller.safe()
+    expected = [
+        mock_call(src.hw_conf.POST_FILTER_VALVE.channel, 0, src.hw_conf.CLOSED),
+        mock_call(src.hw_conf.SANI_LOOP_VALVE.channel, 0, src.hw_conf.CLOSED),
+        mock_call(src.hw_conf.FLUSH_VALVE.channel, 0, src.hw_conf.CLOSED),
+        mock_call(src.hw_conf.DRAIN_VALVE.channel, 0, src.hw_conf.CLOSED),
+        mock_call(src.hw_conf.DRAIN_PUMP_POWER.channel, 0, 0),
+        mock_call(src.hw_conf.SUPPLY_PUMP_POWER.channel, 0, 0),
+        mock_call(src.hw_conf.UVC_POWER.channel, 0, 0),
+    ]
+    controller.devantech.setDigitalState.assert_has_calls(expected, any_order=False)
+    assert controller.devantech.setDigitalState.call_count == len(expected)
+
+def test_analog_calibration_zero(controller):
+    """ADC value of 0 maps to 0.0 in sensor units."""
+    assert controller.decode_analog(0, src.hw_conf.FLOW_IN_SENSOR) == 0.0
+
+def test_analog_calibration_midscale(controller):
+    """ADC value at half full scale maps to half sensor full scale."""
+    half_raw = src.hw_conf.FLOW_OUT_SENSOR.full_scale_adc // 2
+    result = controller.decode_analog(half_raw, src.hw_conf.FLOW_OUT_SENSOR)
+    assert abs(result - src.hw_conf.FLOW_OUT_SENSOR.full_scale_sensor / 2) < 0.01
+
+def test_flow_threshold_above_boundary_updates_timestamp(controller):
+    """The first ADC count that decodes above 0.1 L/min updates last_flow_detected."""
+    import math
+    # Compute the smallest raw value that decodes strictly above 0.1 L/min
+    threshold_raw = math.ceil(
+        (0.1 / src.hw_conf.FLOW_OUT_SENSOR.full_scale_sensor)
+        * src.hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    )
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: threshold_raw if ch == src.hw_conf.FLOW_OUT_SENSOR.channel else 0
+    )
+    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]  # shower
+    before = Controller.determine_derived_mode.last_flow_detected
+    Controller.determine_derived_mode(controller.read_sensors())
+    assert Controller.determine_derived_mode.last_flow_detected > before
+
+def test_flow_threshold_below_boundary_does_not_update_timestamp(controller):
+    """ADC values that decode at or below 0.1 L/min do not update last_flow_detected."""
+    import math
+    # One count below the above-threshold value decodes to <= 0.1 L/min
+    below_raw = math.ceil(
+        (0.1 / src.hw_conf.FLOW_OUT_SENSOR.full_scale_sensor)
+        * src.hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    ) - 1
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: below_raw if ch == src.hw_conf.FLOW_OUT_SENSOR.channel else 0
+    )
+    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]  # shower
+    before = Controller.determine_derived_mode.last_flow_detected
+    Controller.determine_derived_mode(controller.read_sensors())
+    assert Controller.determine_derived_mode.last_flow_detected == before

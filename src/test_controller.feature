@@ -33,3 +33,27 @@ Feature: Shower panel controller modes and transitions
     Given the flow in sensor raw value is maximum
     When the controller decodes the analog value
     Then the result should be the sensor full scale
+
+  Scenario: Controller falls back to drain mode for unrecognized mode bits
+    Given the mode select GPIOs indicate an unrecognized pattern
+    When the controller reads sensors and determines mode
+    Then the controller should set actuators for "drain"
+
+  Scenario: Controller returns to shower mode after sanitize timer expires
+    Given the mode select GPIOs indicate "shower"
+    And flow out sensor reads below threshold for a long period
+    And the sanitize cycle is active and has expired
+    When the controller reads sensors and determines mode
+    Then the controller should set actuators for "shower"
+
+  Scenario: Auto-sanitize does not trigger in drain mode
+    Given the mode select GPIOs indicate "drain"
+    And flow out sensor reads below threshold for a long period
+    When the controller reads sensors and determines mode after timeout
+    Then the controller should set actuators for "drain"
+
+  Scenario: Auto-sanitize does not trigger in flush mode
+    Given the mode select GPIOs indicate "flush"
+    And flow out sensor reads below threshold for a long period
+    When the controller reads sensors and determines mode after timeout
+    Then the controller should set actuators for "flush"

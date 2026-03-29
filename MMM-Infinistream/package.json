@@ -1,30 +1,30 @@
 {
-  "name": "mmm-template",
+  "name": "MMM-Infinistream",
   "version": "1.0.0",
-  "description": "[Module description]",
-  "main": "MMM-Template.js",
+  "description": "MagicMirror² module for the Infinistream recirculating greywater filter",
+  "main": "MMM-Infinistream.js",
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "npm run lint"
+    "test": "jest",
+    "test:lint": "npm run lint"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+[GitHub url].git"
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/test/**/*.test.js"
+    ]
   },
-  "keywords": [
-    "template"
-  ],
-  "author": "[Author]",
   "license": "MIT",
-  "bugs": {
-    "url": "[GitHub url]/issues"
-  },
-  "homepage": "[GitHub url]#readme",
   "devDependencies": {
     "@eslint/js": "^9.10.0",
     "@stylistic/eslint-plugin": "^2.7.2",
     "eslint": "^9.10.0",
-    "globals": "^15.9.0"
+    "globals": "^15.9.0",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.2"
   }
 }
