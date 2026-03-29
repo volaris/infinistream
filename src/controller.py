@@ -14,6 +14,7 @@ from src.hw_conf import (
     DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
     MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
     MODE_NAMES, MAGICMIRROR_WEBHOOK_URL,
+    TURBIDITY_TIERS, DISPLAY_UPDATE_INTERVAL,
     RelayChannel
 )
 
@@ -26,6 +27,9 @@ class Controller:
         for din in MODE_SELECT_CHANNELS:
             self.ads.ADS1263_GPIOChannelMode(din.channel, gpio_mode["MODE_DIGITAL"], 1)
         self.devantech = devantech_eth
+        self._last_sent_mode = None
+        self._last_sent_turbidity_tier = None
+        self._last_sent_time = datetime.datetime.min
 
     def safe(self):
         self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
@@ -129,17 +133,36 @@ class Controller:
         else:
             self.safe()
 
+    @staticmethod
+    def _turbidity_tier(turbidity):
+        for i in range(len(TURBIDITY_TIERS) - 1, 0, -1):
+            if turbidity >= TURBIDITY_TIERS[i]:
+                return i
+        return 0
+
+    def _should_send_display_update(self, mode_name, turbidity):
+        if mode_name != self._last_sent_mode:
+            return True
+        if self._turbidity_tier(turbidity) != self._last_sent_turbidity_tier:
+            return True
+        elapsed = (datetime.datetime.now() - self._last_sent_time).total_seconds()
+        return elapsed >= DISPLAY_UPDATE_INTERVAL
+
     def display_status(self, mode, sensors):
         mode_name = MODE_NAMES.get(mode, str(mode))
         print(f"Mode: {mode_name}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
-        try:
-            requests.post(
-                MAGICMIRROR_WEBHOOK_URL,
-                json={"mode": mode_name, "turbidity": round(sensors.turbidity, 2)},
-                timeout=2,
-            )
-        except requests.exceptions.RequestException:
-            pass
+        if self._should_send_display_update(mode_name, sensors.turbidity):
+            try:
+                requests.post(
+                    MAGICMIRROR_WEBHOOK_URL,
+                    json={"mode": mode_name, "turbidity": round(sensors.turbidity, 2)},
+                    timeout=2,
+                )
+            except requests.exceptions.RequestException:
+                pass
+            self._last_sent_mode = mode_name
+            self._last_sent_turbidity_tier = self._turbidity_tier(sensors.turbidity)
+            self._last_sent_time = datetime.datetime.now()
 
     @staticmethod
     def static_vars(**kwargs):
@@ -186,7 +209,6 @@ class Controller:
 def run():
     from ADS1263 import ADS1263, GPIO_MODE  # Import only here
     controller = Controller(ADS1263(), GPIO_MODE)
-    previous_mode = None
 
     while True:
         controller.step()

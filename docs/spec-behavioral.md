@@ -124,13 +124,23 @@ The main loop executes the following steps once per second:
 2. Determine the effective mode, applying auto-sanitize logic (`determine_derived_mode`)
 3. Actuate relays to match the effective mode (`set_mode`)
 4. Log status to stdout (`display_status`)
-5. POST current mode and turbidity to the MagicMirror webhook (`display_status` — **not yet implemented**)
+5. If the display update throttle allows it, POST current mode and turbidity to the
+   MagicMirror webhook (`display_status`)
 
 ---
 
 ## Display Integration
 
-The controller reports its state to the MagicMirror² display module via HTTP webhook.
+The system uses two Raspberry Pis. The **controller Pi** manages hardware and POSTs
+state updates over HTTP. The **display Pi** runs MagicMirror² and drives the e-ink
+screen independently, so display issues can never affect core controller operation.
+
+```text
+Controller Pi  --POST /shower-update-->  Display Pi
+                                           MagicMirror² (browser)
+                                           Puppeteer screenshot service
+                                           Waveshare 7.5" e-ink display
+```
 
 ### Webhook
 
@@ -144,10 +154,23 @@ The controller reports its state to the MagicMirror² display module via HTTP we
 
 - **`mode`** must be one of: `SHOWER`, `DRAIN`, `FLUSH`, `SANITIZE`
 - **`turbidity`** is a floating-point value in NTU
+- Connection failures are silently swallowed — the control loop never blocks on display
 
-> **Implementation gap:** The Python controller does not yet issue HTTP POSTs.
-> `display_status()` currently prints to stdout only. The webhook URL will need to be
-> added to `hw_conf.py` and an HTTP client call added to `step()`.
+### Display Update Throttle
+
+The controller runs at 1 Hz but does not POST to the webhook every second. A POST is
+sent only when at least one of the following is true:
+
+1. **Mode changed** — any transition between SHOWER / DRAIN / FLUSH / SANITIZE
+2. **Turbidity tier changed** — turbidity crossed one of the tier thresholds
+3. **Interval elapsed** — `DISPLAY_UPDATE_INTERVAL` seconds (default 30) have passed
+   since the last POST, regardless of state
+
+This keeps the MagicMirror DOM and e-ink refresh cycle from thrashing on small
+floating-point turbidity variations while still reflecting meaningful changes promptly.
+
+Tier thresholds are defined canonically in `hw_conf.TURBIDITY_TIERS` and must match
+the `turbidityLevels` config in the MagicMirror module.
 
 ### Display Behavior
 

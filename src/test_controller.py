@@ -233,3 +233,64 @@ def test_flow_threshold_below_boundary_does_not_update_timestamp(controller):
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected == before
+
+# --- Display throttle unit tests ---
+
+def test_throttle_sends_on_first_step(controller):
+    """First step always sends (last_sent_mode is None)."""
+    controller.step()
+    assert controller.mock_requests.post.call_count == 1
+
+def test_throttle_suppresses_repeat_update(controller):
+    """Second step with identical mode and turbidity tier does not send again."""
+    controller.step()
+    controller.mock_requests.post.reset_mock()
+    controller.step()
+    assert controller.mock_requests.post.call_count == 0
+
+def test_throttle_sends_on_mode_change(controller):
+    """Mode change immediately overrides the throttle."""
+    controller.step()  # DRAIN (all bits 0)
+    controller.mock_requests.post.reset_mock()
+    # Switch to SHOWER (bits 0,1,0)
+    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+    controller.step()
+    assert controller.mock_requests.post.call_count == 1
+    payload = controller.mock_requests.post.call_args.kwargs["json"]
+    assert payload["mode"] == "SHOWER"
+
+def test_throttle_sends_on_turbidity_tier_change(controller):
+    """Turbidity crossing a tier boundary immediately overrides the throttle."""
+    controller.step()  # turbidity = 0, tier 0
+    controller.mock_requests.post.reset_mock()
+    # Set turbidity above tier 1 threshold (50 NTU)
+    warning_raw = int(
+        (src.hw_conf.TURBIDITY_TIERS[1] / src.hw_conf.TURBIDITY_SENSOR.full_scale_sensor)
+        * src.hw_conf.TURBIDITY_SENSOR.full_scale_adc
+    ) + 1
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: warning_raw if ch == src.hw_conf.TURBIDITY_SENSOR.channel else 0
+    )
+    controller.step()
+    assert controller.mock_requests.post.call_count == 1
+
+def test_throttle_sends_after_interval_elapsed(controller):
+    """Update is sent after DISPLAY_UPDATE_INTERVAL seconds even with no state change."""
+    controller.step()
+    controller.mock_requests.post.reset_mock()
+    # Backdate last_sent_time beyond the interval
+    controller._last_sent_time = (
+        datetime.datetime.now()
+        - datetime.timedelta(seconds=src.hw_conf.DISPLAY_UPDATE_INTERVAL + 1)
+    )
+    controller.step()
+    assert controller.mock_requests.post.call_count == 1
+
+def test_turbidity_tier_boundaries(controller):
+    """_turbidity_tier returns correct tier at each threshold boundary."""
+    assert Controller._turbidity_tier(0)   == 0
+    assert Controller._turbidity_tier(49)  == 0
+    assert Controller._turbidity_tier(50)  == 1
+    assert Controller._turbidity_tier(99)  == 1
+    assert Controller._turbidity_tier(100) == 2
+    assert Controller._turbidity_tier(500) == 2

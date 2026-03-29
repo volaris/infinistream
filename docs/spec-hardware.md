@@ -2,16 +2,31 @@
 
 ## System Components
 
+The system uses two Raspberry Pis on the same LAN. The **controller Pi** handles all
+hardware I/O; the **display Pi** runs the UI stack. This separation ensures display
+issues cannot affect the control loop.
+
+### Controller Pi
+
 | Component             | Model / Part            | Interface        | Role                                   |
 |-----------------------|-------------------------|------------------|----------------------------------------|
 | Controller SBC        | Raspberry Pi            | —                | Runs Python control loop               |
-| ADC / GPIO board      | Waveshare ADS1263 HAT   | SPI (bus 1)      | 24-bit analog reads + GPIO digital I/O |
+| ADC / GPIO board      | Waveshare ADS1263 HAT   | SPI (bus 0)      | 24-bit analog reads + GPIO digital I/O |
 | Relay board           | Devantech ETH008        | TCP/IP           | Controls all valves and pumps          |
 | Flow sensor (inlet)   | Gredia GR-S403          | Analog (0–5 V)   | Measures incoming flow rate            |
 | Flow sensor (outlet)  | Gredia GR-S403          | Analog (0–5 V)   | Measures outgoing flow rate            |
 | Turbidity sensor      | DFRobot KS0414          | Analog (0–5 V)   | Measures water clarity in NTU          |
 | Mode select switch    | 3-position rotary       | Digital GPIO     | Operator mode selection                |
-| Display               | MagicMirror²            | HTTP webhook     | Real-time system status display        |
+
+### Display Pi
+
+| Component           | Model / Part                  | Interface  | Role                                        |
+|---------------------|-------------------------------|------------|---------------------------------------------|
+| Display SBC         | Raspberry Pi                  | —          | Runs MagicMirror² and e-ink rendering stack |
+| E-ink display       | Waveshare 7.5" e-Paper HAT V2 | SPI (bus 0)| 800×480 B/W display, ~4 s full refresh      |
+| Display software    | MagicMirror²                  | HTTP       | Receives webhook, renders browser UI        |
+| Screenshot service  | Puppeteer (Node.js)           | localhost  | Screenshots MagicMirror on state change     |
+| E-ink driver        | Waveshare epd7in5_V2          | SPI        | Pushes rendered image to display            |
 
 ---
 
@@ -119,8 +134,9 @@ logic to run and be tested on non-embedded hardware.
 
 ## MagicMirror Webhook API
 
-The Python controller POSTs status updates to the MagicMirror² module's HTTP endpoint
-after each control loop iteration.
+The controller Pi POSTs status updates to the display Pi's MagicMirror² module. Updates
+are throttled — see `spec-behavioral.md` for the throttle rules. The display Pi handles
+all rendering independently; a lost or slow POST never stalls the control loop.
 
 ### Request
 
@@ -150,11 +166,13 @@ Content-Type: application/json
 
 ### Configuration
 
-The webhook URL is not yet defined in `hw_conf.py`. It will need to be added as:
-
 ```python
-MAGICMIRROR_WEBHOOK_URL = "http://<host>:8085/shower-update"
+# src/hw_conf.py
+MAGICMIRROR_WEBHOOK_URL  = "http://<display-pi-ip>:8085/shower-update"
+TURBIDITY_TIERS          = [0, 50, 100]   # NTU thresholds: clean / warning / unsafe
+DISPLAY_UPDATE_INTERVAL  = 30             # seconds between throttled updates
 ```
 
 The MagicMirror module listens on port `8085` by default (configurable via the module's
-`webhookPort` config option).
+`webhookPort` option). `TURBIDITY_TIERS` must match the `turbidityLevels` array in the
+MagicMirror module config.

@@ -82,3 +82,11 @@ CLOSED = 0
 
 # MagicMirror² display webhook
 MAGICMIRROR_WEBHOOK_URL = "http://localhost:8085/shower-update"
+
+# Turbidity tier thresholds (NTU). Tier 0 = clean, 1 = warning, 2 = unsafe.
+# Must match the turbidityLevels config in MMM-Infinistream.
+TURBIDITY_TIERS = [0, 50, 100]
+
+# Minimum seconds between display webhook posts when mode and turbidity tier
+# are unchanged. Mode or tier changes always send immediately.
+DISPLAY_UPDATE_INTERVAL = 30
