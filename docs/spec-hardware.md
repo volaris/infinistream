@@ -96,9 +96,7 @@ Full relay state for each mode. `1` = energized (valve open / device on), `0` = 
 | 4     | Drain valve        | 1     | 0     | 0      | 0        | 0    |
 | 5     | Drain pump         | 1     | 1     | 1      | 0        | 0    |
 | 6     | Supply pump        | 0     | 1     | 1      | 1        | 0    |
-| 7     | UV-C light         | 0     | 0     | 1      | 0*       | 0    |
-
-\* See SANITIZE note in `spec-behavioral.md`.
+| 7     | UV-C light         | 0     | 0     | 1      | 1        | 0    |
 
 ---
 

@@ -43,10 +43,6 @@ shower is idle.
 
 Water path: `tank → UV → tank`
 
-> **Note:** In the current implementation `UVC_POWER` is de-energized in SANITIZE mode.
-> This is inconsistent with the intended water path and is likely a bug. The expected
-> behavior is that the UV light should be **on** during SANITIZE mode.
-
 #### FLUSH
 
 Filter backflush. Both pumps run while the flush valve is open, forcing water through the
@@ -74,9 +70,7 @@ Water path: `tank → faucet`
 | Drain valve         | OPEN   | CLOSED | CLOSED | CLOSED   |
 | Drain pump          | ON     | ON     | ON     | OFF      |
 | Supply pump         | OFF    | ON     | ON     | ON       |
-| UV light            | OFF    | OFF    | ON     | OFF*     |
-
-\* See SANITIZE note above.
+| UV light            | OFF    | OFF    | ON     | ON       |
 
 ### Safe / Fault State
 
