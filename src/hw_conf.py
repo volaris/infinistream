@@ -1,3 +1,4 @@
+import os
 from typing import NamedTuple, List
 from dataclasses import dataclass
 
@@ -81,7 +82,7 @@ OPEN   = 1
 CLOSED = 0
 
 # MagicMirror² display webhook
-MAGICMIRROR_WEBHOOK_URL = "http://localhost:8085/shower-update"
+MAGICMIRROR_WEBHOOK_URL = os.environ.get("MAGICMIRROR_WEBHOOK_URL", "http://localhost:8085/shower-update")
 
 # Turbidity tier thresholds (NTU). Tier 0 = clean, 1 = warning, 2 = unsafe.
 # Must match the turbidityLevels config in MMM-Infinistream.
