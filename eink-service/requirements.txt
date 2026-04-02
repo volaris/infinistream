@@ -1,0 +1,4 @@
+Pillow>=9.0.0
+# waveshare_epd is not on PyPI — install from Waveshare's GitHub:
+#   git clone https://github.com/waveshareteam/e-Paper.git
+#   pip install -r e-Paper/RaspberryPi_JetsonNano/python/requirements.txt

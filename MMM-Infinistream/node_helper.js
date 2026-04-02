@@ -4,6 +4,9 @@ const Log = require("logger");
 const bodyParser = require('body-parser');
 const { regex } = require("envsub/main.config");
 
+const EINK_SERVICE_URL = process.env.EINK_SERVICE_URL || "http://localhost:3001/trigger";
+const EINK_SETTLE_MS   = 500;
+
 module.exports = NodeHelper.create({
 	// Override start method.
 	start () {
@@ -31,6 +34,7 @@ module.exports = NodeHelper.create({
                 this.turbidity = req.body.turbidity;
                 this.updateModule();
                 Log.info("SHOWER_UPDATE_EVENT notification sent");
+                setTimeout(() => this.triggerEink(), EINK_SETTLE_MS);
                 res.sendStatus(200);
             } else {
                 res.sendStatus(400);
@@ -43,5 +47,10 @@ module.exports = NodeHelper.create({
             mode: this.mode,
             turbidity: this.turbidity
         });
+    },
+
+    triggerEink: function () {
+        fetch(EINK_SERVICE_URL, { method: "POST" })
+            .catch(err => Log.info(`eink-service unreachable: ${err.message}`));
     }
 });
