@@ -211,3 +211,48 @@ describe("updateFlowVisibility", () => {
     expect(flowDiv.querySelector("#tank-out").classList.contains("hidden")).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// getDom — rendered content
+// ---------------------------------------------------------------------------
+
+/** Full context: inherits all module methods so getDom can call its siblings. */
+function fullCtx(mode = "SHOWER", turbidity = 0) {
+  return Object.assign(Object.create(moduleDef), {
+    mode,
+    turbidity,
+    config: { turbidityLevels: [0, 50, 100], slowSpinner: true }
+  });
+}
+
+describe("getDom — content", () => {
+  test("wrapper has class 'infinistream'", () => {
+    const dom = moduleDef.getDom.call(fullCtx("SHOWER", 0));
+    expect(dom.classList.contains("infinistream")).toBe(true);
+  });
+
+  test.each(["CONNECTING", "SHOWER", "DRAIN", "FLUSH", "SANITIZE"])(
+    "%s mode name appears as text in the DOM",
+    (mode) => {
+      const dom = moduleDef.getDom.call(fullCtx(mode, 0));
+      expect(dom.textContent).toContain(mode);
+    }
+  );
+
+  test("turbidity NTU value appears in the DOM", () => {
+    const dom = moduleDef.getDom.call(fullCtx("SHOWER", 42));
+    expect(dom.textContent).toContain("42 NTU");
+  });
+
+  test("'Turbidity:' label appears in the DOM", () => {
+    const dom = moduleDef.getDom.call(fullCtx("SHOWER", 0));
+    expect(dom.textContent).toContain("Turbidity:");
+  });
+
+  test("all six permanent components are present in the flow grid", () => {
+    const dom = moduleDef.getDom.call(fullCtx("SHOWER", 0));
+    for (const id of ["comp-tank", "comp-heater", "comp-shower", "comp-filter", "comp-uv", "comp-faucet"]) {
+      expect(dom.querySelector(`#${id}`)).not.toBeNull();
+    }
+  });
+});
