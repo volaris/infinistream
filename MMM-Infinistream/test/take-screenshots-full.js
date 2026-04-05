@@ -98,7 +98,7 @@ const LAYOUT_CSS = `
   .region.top.left    { top: 0;   left: 0;   width: 220px; padding: 12px; }
   .region.top.center  { top: 0;   left: 220px; right: 200px; padding: 8px; }
   .region.top.right   { top: 0;   right: 0;  width: 200px; padding: 12px; }
-  .region.bottom.left { bottom: 0; left: 0;  width: 380px; padding: 14px; }
+  .region.bottom.left { top: 245px; bottom: 0; left: 0; right: 0; padding: 20px; overflow: hidden; }
 
   /* Mock module chrome */
   .mock-module { font-size: 13px; line-height: 1.5; }
@@ -170,6 +170,25 @@ async function main() {
       document.getElementById("top-left").innerHTML   = leftHtml;
       document.getElementById("top-right").innerHTML  = rightHtml;
       document.getElementById("bottom-left").innerHTML = complimentHtml;
+
+      // Binary-search the largest font-size that keeps the compliment within
+      // its container, so shorter quotes render large and fill the space.
+      const container = document.getElementById("bottom-left");
+      const el = container.querySelector(".mock-compliment");
+      const cs = getComputedStyle(container);
+      const innerH = container.clientHeight - parseFloat(cs.paddingTop)  - parseFloat(cs.paddingBottom);
+      const innerW = container.clientWidth  - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      let lo = 14, hi = 96;
+      while (lo < hi - 1) {
+        const mid = Math.floor((lo + hi) / 2);
+        el.style.fontSize = mid + "px";
+        if (el.scrollHeight <= innerH && el.scrollWidth <= innerW) {
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      el.style.fontSize = lo + "px";
     }, CURRENT_WEATHER_HTML, FORECAST_HTML, COMPLIMENT_HTML);
 
     for (const { label, mode, turbidity } of STATES) {
