@@ -1,0 +1,22 @@
+services:
+  magicmirror:
+    build:
+      context: .
+      dockerfile: display/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      EINK_SERVICE_URL: "http://eink-service:3001/trigger"
+    restart: unless-stopped
+
+  eink-service:
+    build:
+      context: ./eink-service
+    ports:
+      - "3001:3001"
+    environment:
+      MAGICMIRROR_URL: "http://magicmirror:8080"
+      CHROMIUM_PATH: "/usr/bin/chromium"
+    depends_on:
+      - magicmirror
+    restart: unless-stopped

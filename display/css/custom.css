@@ -1,0 +1,19 @@
+/* Light theme for the Waveshare 7.5" V2 e-ink display.
+ * Inverts the default MagicMirror dark theme so the dithered screenshot
+ * renders correctly on the panel without a pre-inversion step in display.py.
+ */
+:root {
+  --color-text: #666;
+  --color-text-dimmed: #333;
+  --color-text-bright: #000;
+  --color-background: #fff;
+}
+
+/* Pin the body to the e-ink panel's physical dimensions (800×480 at 80 DPI).
+ * Puppeteer captures at 800×480 px; these fixed inch values match that viewport
+ * so the layout does not reflow when the screenshot is taken.
+ */
+body {
+  height: 6.5in;
+  width: 10in;
+}
