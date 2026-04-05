@@ -53,12 +53,12 @@ let config = {
 						"That ain't playa sparkle, friend.\nGet in here.",
 						"Smelling like\n'radical self-expression'\nisn't a flex. Wash up.",
 						"Your aura is glowing… with grime.\nLet's fix that.",
-						"Even the porta-potties are judging you.\nScrub up, champ.",
-						"Your funk is achieving sentience.\nDo the humane thing.",
+						"You've survived the dust.\nYou've survived the heat.\nThe shower is the reward.",
+						"Your playa perfume has evolved\nbeyond its original design.\nTime to recalibrate.",
 						"Less Eau de Playa,\nmore H₂O de Shower.",
 						"Dust is forever.\nYour stank doesn't have to be.",
 						"Your cuddle puddle is filing complaints.\nGet in the shower.",
-						"Consent applies to odors too.\nMake it a 'yes'.",
+						"Camp love is unconditional.\nYour musk needn't test it.",
 						"The dust is an art medium.\nYour BO is not.",
 						"Hydration starts on the\noutside too. Hop in.",
 						"Your outfit is legendary.\nYour musk is not.",
@@ -66,8 +66,8 @@ let config = {
 						"Dust storms are temporary.\nYour stink is eternal (unless you shower).",
 						"That's not playa magic.\nThat's funk. Rinse off.",
 						"Water is a gift.\nSo is smelling decent.",
-						"Do it for your tentmate.\nThey're suffering in silence.",
-						"Dirty hippy isn't a compliment."
+						"Your camp shows up for you.\nThey'd never say it.\nBut they'd appreciate it.",
+						"Radical self-care\nshould be a principle.\nHop in."
 					]
 				}
 			}
