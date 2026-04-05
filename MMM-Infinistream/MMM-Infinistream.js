@@ -148,8 +148,8 @@ Module.register("MMM-Infinistream", {
         <div class="shower sanitize flush flow-shrink" id="tank-flame-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>
         </div>
-        <div class="shower flow-shrink" id="shower-filter-mix">
-          <i class="fa-brands fa-mixer" font-weight="300"></i>
+        <div class="collector" id="shower-filter-mix">
+          <i class="fa-solid fa-inbox"></i>
         </div>
         <div class="shower flush sanitize flow-shrink" id="tank-filter-mix">
           <i class="fa-brands fa-mixer" font-weight="300"></i>

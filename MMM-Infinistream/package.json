@@ -8,7 +8,8 @@
     "lint:fix": "eslint . --fix",
     "test": "jest",
     "test:lint": "npm run lint",
-    "screenshots": "node test/take-screenshots.js"
+    "screenshots": "node test/take-screenshots.js",
+    "screenshots:full": "node test/take-screenshots-full.js"
   },
   "jest": {
     "testEnvironment": "node",
