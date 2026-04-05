@@ -27,8 +27,12 @@ RUN cd /opt/magic_mirror/modules/MMM-Infinistream \
  && npm install --omit=dev
 
 # Apply display config and CSS overrides
-COPY display/config.js     /opt/magic_mirror/config/config.js
+COPY display/config.js      /opt/magic_mirror/config/config.js
 COPY display/css/custom.css /opt/magic_mirror/css/custom.css
+
+# Custom weather provider for RockBLOCK / comms-service
+COPY display/providers/rockblock.js \
+     /opt/magic_mirror/modules/default/weather/providers/rockblock.js
 
 EXPOSE 8080
 CMD ["npm", "run", "server"]

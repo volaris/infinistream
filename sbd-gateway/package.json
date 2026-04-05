@@ -1,0 +1,19 @@
+{
+  "name": "sbd-gateway",
+  "version": "1.0.0",
+  "description": "AWS Lambda SBD gateway — receives Rock7 MO webhooks, pushes MT weather responses",
+  "main": "handler.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/test/**/*.test.js"]
+  },
+  "dependencies": {
+    "cbor-x": "^1.5.4"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}

@@ -20,3 +20,19 @@ services:
     depends_on:
       - magicmirror
     restart: unless-stopped
+
+  comms-service:
+    build:
+      context: ./comms-service
+    ports:
+      - "3002:3002"
+    environment:
+      ROCKBLOCK_PORT: "/dev/ttyUSB0"
+      GPS_PORT: "/dev/ttyAMA0"
+      GPS_BAUD: "9600"
+      WEATHER_INTERVAL_MS: "21600000"    # 6 hours
+      TIME_SYNC_INTERVAL_MS: "43200000"  # 12 hours
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+      - "/dev/ttyAMA0:/dev/ttyAMA0"
+    restart: unless-stopped
