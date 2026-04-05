@@ -53,10 +53,14 @@ async function main() {
       window.Log    = { log() {}, info() {}, error() {} };
     });
     await page.addStyleTag({
-      url: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css",
+      url: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css",
     });
     await page.addStyleTag({ path: path.join(MODULE_DIR, "MMM-Infinistream.css") });
     await page.addScriptTag({ path: path.join(MODULE_DIR, "MMM-Infinistream.js") });
+    // Wait for Font Awesome webfonts to finish loading before capturing any frame.
+    await page.waitForFunction(() =>
+      document.fonts.check("1em FontAwesome") || document.fonts.check("1em \"Font Awesome 6 Free\"") || document.fonts.check("1em \"Font Awesome 7 Free\"")
+    , { timeout: 10000 }).catch(() => {});
 
     for (const { label, mode, turbidity } of STATES) {
       await page.evaluate((m, t) => {

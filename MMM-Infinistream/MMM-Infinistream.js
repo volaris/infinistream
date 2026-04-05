@@ -284,7 +284,7 @@ Module.register("MMM-Infinistream", {
 
   getStyles: function () {
     return [
-      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css",
+      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css",
       this.file("MMM-Infinistream.css")
     ];
   }
