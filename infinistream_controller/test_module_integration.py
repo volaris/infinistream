@@ -122,7 +122,7 @@ def test_webhook_receives_correct_turbidity(controller):
     )
     controller.step()
     expected = round(
-        (half_raw / hw_conf.TURBIDITY_SENSOR.full_scale_adc)
+        (1.0 - half_raw / hw_conf.TURBIDITY_SENSOR.full_scale_adc)
         * hw_conf.TURBIDITY_SENSOR.full_scale_sensor,
         2,
     )

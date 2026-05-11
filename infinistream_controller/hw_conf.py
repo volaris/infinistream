@@ -10,6 +10,7 @@ class AnalogInputConfig():
     full_scale_adc: int
     full_scale_sensor: float
     offset: float = 0.0
+    inverted: bool = False  # True when higher voltage means lower sensor value
 
 @dataclass
 class DigitalInputConfig():
@@ -28,15 +29,15 @@ FLOW_IN_SENSOR = AnalogInputConfig(
     channel=0,
     sensor_type="flow",
     units="L/min",
-    full_scale_adc=2**24,
-    full_scale_sensor=20.0,  # Gredia GR-S403 max flow
+    full_scale_adc=2**31 - 1,  # ADS1263 ADC1 signed 32-bit max (0x7FFFFFFF)
+    full_scale_sensor=20.0,    # Gredia GR-S403 max flow
     offset=0.0
 )
 FLOW_OUT_SENSOR = AnalogInputConfig(
     channel=1,
     sensor_type="flow",
     units="L/min",
-    full_scale_adc=2**24,
+    full_scale_adc=2**31 - 1,
     full_scale_sensor=20.0,
     offset=0.0
 )
@@ -44,9 +45,10 @@ TURBIDITY_SENSOR = AnalogInputConfig(
     channel=2,
     sensor_type="turbidity",
     units="NTU",
-    full_scale_adc=2**24,
+    full_scale_adc=2**31 - 1,
     full_scale_sensor=4000.0,  # KS0414 max NTU
-    offset=0.0
+    offset=0.0,
+    inverted=True,             # KS0414: high voltage = clear water, low voltage = turbid
 )
 
 # Digital input configuration for mode select (rotary switch)

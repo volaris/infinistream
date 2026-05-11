@@ -78,9 +78,10 @@ class Controller:
             return MODE_DRAIN  # fallback
 
     def decode_analog(self, raw, config):
-        # Convert ADC value to sensor units using calibration
-        value = (raw / config.full_scale_adc) * config.full_scale_sensor + config.offset
-        return value
+        ratio = raw / config.full_scale_adc
+        if config.inverted:
+            ratio = 1.0 - ratio
+        return ratio * config.full_scale_sensor + config.offset
 
     def set_relay_channel(self, channel: RelayChannel, state):
         self.devantech.setDigitalState(channel.channel, 0, state)

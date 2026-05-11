@@ -261,16 +261,14 @@ def test_throttle_sends_on_mode_change(controller):
 
 def test_throttle_sends_on_turbidity_tier_change(controller):
     """Turbidity crossing a tier boundary immediately overrides the throttle."""
-    controller.step()  # turbidity = 0, tier 0
-    controller.mock_requests.post.reset_mock()
-    # Set turbidity above tier 1 threshold (50 NTU)
-    warning_raw = int(
-        (hw_conf.TURBIDITY_TIERS[1] / hw_conf.TURBIDITY_SENSOR.full_scale_sensor)
-        * hw_conf.TURBIDITY_SENSOR.full_scale_adc
-    ) + 1
+    # Start with clean water: ADC at full scale → 0 NTU (tier 0) via inverted sensor
     controller.ads.ADS1263_GetChannalValue.side_effect = (
-        lambda ch: warning_raw if ch == hw_conf.TURBIDITY_SENSOR.channel else 0
+        lambda ch: hw_conf.TURBIDITY_SENSOR.full_scale_adc if ch == hw_conf.TURBIDITY_SENSOR.channel else 0
     )
+    controller.step()
+    controller.mock_requests.post.reset_mock()
+    # Drop to dirty water: ADC at 0 → 4000 NTU (tier 2) via inverted sensor
+    controller.ads.ADS1263_GetChannalValue.side_effect = lambda ch: 0
     controller.step()
     assert controller.mock_requests.post.call_count == 1
 
