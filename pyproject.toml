@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "infinistream-controller"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "click",
+    "requests",
+    "devantech-eth",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-bdd", "Pillow"]
+pi  = ["spidev", "RPi.GPIO"]
+
+[project.scripts]
+infinistream-controller = "infinistream_controller.controller:run"
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["infinistream_controller", "infinistream_controller.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["infinistream_controller"]

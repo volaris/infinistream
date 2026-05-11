@@ -6,7 +6,7 @@ import requests
 
 import devantech_eth
 
-from src.hw_conf import (
+from infinistream_controller.hw_conf import (
     DEVANTECH_IP, DEVANTECH_PORT,
     FLOW_IN_SENSOR, FLOW_OUT_SENSOR, TURBIDITY_SENSOR,
     MODE_SELECT_CHANNELS,
@@ -207,7 +207,7 @@ class Controller:
 
 @click.command()
 def run():
-    from ADS1263 import ADS1263, GPIO_MODE  # Import only here
+    from infinistream_controller.ADS1263 import ADS1263, GPIO_MODE  # Import only here
     controller = Controller(ADS1263(), GPIO_MODE)
 
     while True:

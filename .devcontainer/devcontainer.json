@@ -3,11 +3,12 @@
   "image": "mcr.microsoft.com/devcontainers/python:3.10-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {},
+    "ghcr.io/devcontainers/features/uv:1": {}
   },
+
   "containerEnv": {
-    "CHROMIUM_PATH": "/usr/bin/chromium",
-    "PYTHONPATH": "/workspaces/infinistream"
+    "CHROMIUM_PATH": "/usr/bin/chromium"
   },
   "postCreateCommand": "bash .devcontainer/setup.sh",
   "customizations": {

@@ -16,9 +16,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import src.controller as controller_module
-import src.hw_conf as hw_conf
-from src.controller import Controller
+import infinistream_controller.controller as controller_module
+import infinistream_controller.hw_conf as hw_conf
+from infinistream_controller.controller import Controller
 
 
 # ---------------------------------------------------------------------------
