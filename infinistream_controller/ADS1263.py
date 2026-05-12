@@ -226,7 +226,7 @@ class ADS1263:
             print("REG_GPIOCON unsuccess")
 
         if mode == GPIO_MODE["MODE_DIGITAL"]:
-            data = self.ADS1263_ReadData(ADS1263_REG["REG_GPIODIR"])
+            data = self.ADS1263_ReadData(ADS1263_REG["REG_GPIODIR"])[0]
             bit = direction << channel
             if direction:
                 data |= bit
