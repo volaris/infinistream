@@ -158,6 +158,8 @@ def is_raspberry_pi():
     try:
         with open('/proc/cpuinfo', 'r') as f:
             for line in f:
+                if 'Raspberry Pi' in line:
+                    return True
                 if 'Hardware' in line and 'BCM2835' in line:
                     return True
                 if 'Revision' in line and ('a02082' in line or 'a020a0' in line or 'a03111' in line): # Example revisions for various Pi models
