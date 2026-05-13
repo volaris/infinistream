@@ -12,8 +12,9 @@ scenarios(os.path.join(os.path.dirname(__file__), "test_controller.feature"))
 
 @pytest.fixture
 def controller():
-    with patch("infinistream_controller.controller.devantech_eth") as mock_devantech, \
+    with patch("infinistream_controller.controller.eth008") as mock_eth008, \
          patch("infinistream_controller.controller.requests") as mock_requests:
+        mock_devantech = mock_eth008.ETH008.return_value
         class MockADS:
             def ADS1263_init_ADC1(self): pass
             def ADS1263_GPIOChannelMode(self, channel, mode, direction): pass
@@ -22,7 +23,6 @@ def controller():
         ads = MockADS()
         gpio_mode = {"MODE_DIGITAL": 1}
         ctrl = Controller(ads, gpio_mode)
-        ctrl.devantech = mock_devantech
         ctrl.mock_requests = mock_requests
         # Set static vars on the static method, not the instance
         Controller.determine_derived_mode.last_flow_detected = datetime.datetime.now()

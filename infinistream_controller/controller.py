@@ -28,6 +28,7 @@ class Controller:
             self.ads.ADS1263_GPIOChannelMode(din.channel, gpio_mode["MODE_DIGITAL"], 1)
         # TODO: make configurable or switch to 192.168.2.3
         self.devantech = eth008.ETH008(ip = "192.168.1.63", port = 17494, password = "password")
+        self.devantech.connect()
         self._last_sent_mode = None
         self._last_sent_turbidity_tier = None
         self._last_sent_time = datetime.datetime.min

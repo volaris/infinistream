@@ -79,7 +79,7 @@ def controller(live_webhook, monkeypatch):
     ads.ADS1263_GetChannalValue = MagicMock(side_effect=lambda ch: 0)
 
     with monkeypatch.context() as m:
-        m.setattr(controller_module, "devantech_eth", MagicMock())
+        m.setattr(controller_module, "eth008", MagicMock())
         ctrl = Controller(ads, {"MODE_DIGITAL": 1})
 
     ctrl.devantech = MagicMock()
