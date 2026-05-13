@@ -13,6 +13,12 @@ RUN apt-get update \
       chromium \
       python3 \
       python3-pip \
+      python3-dev \
+      python3-gpiozero \
+      python3-numpy \
+      gcc \
+      make \
+      git \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,6 +29,23 @@ RUN npm ci --omit=dev
 COPY . .
 
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+# lgpio C library is not in Debian Bookworm repos — build from source.
+# rpi-lgpio (drop-in RPi.GPIO) uses it via ctypes; no /proc/device-tree needed.
+RUN git clone --depth 1 https://github.com/joan2937/lg.git /tmp/lg \
+ && make -C /tmp/lg \
+ && make -C /tmp/lg install \
+ && ldconfig \
+ && rm -rf /tmp/lg
+
+# waveshare_epd is not on PyPI — clone and install from source.
+# --no-deps skips Waveshare's platform detection (which falls through to
+# Jetson.GPIO in Docker and clobbers RPi.GPIO); Pi deps pinned explicitly.
+RUN git clone --depth 1 https://github.com/waveshareteam/e-Paper.git /tmp/e-paper \
+ && pip3 install --no-cache-dir --break-system-packages --no-deps \
+      /tmp/e-paper/RaspberryPi_JetsonNano/python \
+ && pip3 install --no-cache-dir --break-system-packages "rpi-lgpio" \
+ && rm -rf /tmp/e-paper
 
 ENV CHROMIUM_PATH=/usr/bin/chromium
 ENV PORT=3001

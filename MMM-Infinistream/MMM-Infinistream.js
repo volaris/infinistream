@@ -16,7 +16,6 @@
 Module.register("MMM-Infinistream", {
   defaults: {
     turbidityLevels: [0, 50, 100],
-    webhookPort: 8085,
     slowSpinner: true
   },
 

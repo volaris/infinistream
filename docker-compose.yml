@@ -17,6 +17,14 @@ services:
     environment:
       MAGICMIRROR_URL: "http://magicmirror:8080"
       CHROMIUM_PATH: "/usr/bin/chromium"
+      GPIOZERO_PIN_FACTORY: rpigpio
+    devices:
+      - "/dev/spidev0.0:/dev/spidev0.0"
+      - "/dev/gpiomem:/dev/gpiomem"
+    volumes:
+      - /proc/cpuinfo:/proc/cpuinfo:ro
+      - /sys/firmware/devicetree/base:/proc/device-tree:ro
+    privileged: true
     depends_on:
       - magicmirror
     restart: unless-stopped

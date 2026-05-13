@@ -26,7 +26,7 @@ class Controller:
         # Set mode select channels to GPIO digital mode
         for din in MODE_SELECT_CHANNELS:
             self.ads.ADS1263_GPIOChannelMode(din.channel, gpio_mode["MODE_DIGITAL"], 1)
-        self.devantech = eth008.ETH008(ip = "192.168.2.3", port = 17494, password = "password")
+        self.devantech = eth008.ETH008(ip = DEVANTECH_IP, port = DEVANTECH_PORT, password = "password")
         self.devantech.connect()
         self._last_sent_mode = None
         self._last_sent_turbidity_tier = None
@@ -155,12 +155,14 @@ class Controller:
         print(f"Mode: {mode_name}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
         if self._should_send_display_update(mode_name, sensors.turbidity):
             try:
+                print(f"Attempting update @ {MAGICMIRROR_WEBHOOK_URL}")
                 requests.post(
                     MAGICMIRROR_WEBHOOK_URL,
                     json={"mode": mode_name, "turbidity": round(sensors.turbidity, 2)},
                     timeout=2,
                 )
-            except requests.exceptions.RequestException:
+            except requests.exceptions.RequestException as e:
+                print(e)
                 pass
             self._last_sent_mode = mode_name
             self._last_sent_turbidity_tier = self._turbidity_tier(sensors.turbidity)

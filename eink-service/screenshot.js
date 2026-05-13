@@ -20,7 +20,7 @@ async function takeScreenshot() {
     try {
         const page = await browser.newPage();
         await page.setViewport({ width: 800, height: 480 });
-        await page.goto(MAGICMIRROR_URL, { waitUntil: "networkidle0", timeout: 10000 });
+        await page.goto(MAGICMIRROR_URL, { waitUntil: "networkidle2", timeout: 30000 });
         await page.screenshot({ path: SCREENSHOT_PATH });
     } finally {
         await browser.close();

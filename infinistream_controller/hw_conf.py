@@ -21,8 +21,8 @@ class RelayChannel():
     channel: int
 
 # Devantech endpoint config
-DEVANTECH_IP = "192.168.1.50"
-DEVANTECH_PORT = 17123
+DEVANTECH_IP = "192.168.2.3"
+DEVANTECH_PORT = 17494
 
 # Analog input configuration (channel, type, units, ADC full scale, sensor full scale, offset)
 FLOW_IN_SENSOR = AnalogInputConfig(
@@ -84,7 +84,7 @@ OPEN   = 1
 CLOSED = 0
 
 # MagicMirror² display webhook
-MAGICMIRROR_WEBHOOK_URL = os.environ.get("MAGICMIRROR_WEBHOOK_URL", "http://localhost:8085/shower-update")
+MAGICMIRROR_WEBHOOK_URL = os.environ.get("MAGICMIRROR_WEBHOOK_URL", "http://192.168.1.61:8080/shower-update")
 
 # Turbidity tier thresholds (NTU). Tier 0 = clean, 1 = warning, 2 = unsafe.
 # Must match the turbidityLevels config in MMM-Infinistream.
