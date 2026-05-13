@@ -14,9 +14,13 @@ services:
       context: ./eink-service
     ports:
       - "3001:3001"
+    depends_on:
+      - magicmirror
     environment:
       MAGICMIRROR_URL: "http://magicmirror:8080"
       CHROMIUM_PATH: "/usr/bin/chromium"
+      CHROMEDRIVER_PATH: "/usr/bin/chromedriver"
+      MM_STARTUP_DELAY: "1"
       GPIOZERO_PIN_FACTORY: rpigpio
     devices:
       - "/dev/spidev0.0:/dev/spidev0.0"
@@ -25,8 +29,6 @@ services:
       - /proc/cpuinfo:/proc/cpuinfo:ro
       - /sys/firmware/devicetree/base:/proc/device-tree:ro
     privileged: true
-    depends_on:
-      - magicmirror
     restart: unless-stopped
 
   comms-service:

@@ -1,4 +1,4 @@
+Flask>=3.0.0
 Pillow>=9.0.0
+selenium>=4.0.0
 spidev>=3.5
-# gpiozero and numpy installed via apt (python3-gpiozero, python3-numpy) per Waveshare instructions
-# waveshare_epd is installed from GitHub in the Dockerfile (not on PyPI)

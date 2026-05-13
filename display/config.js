@@ -24,7 +24,10 @@ let config = {
 	modules: [
 		{
 			module: "clock",
-			position: "top_left"
+			position: "top_left",
+			config: {
+				displaySeconds: false
+			}
 		},
 		{
 			module: "MMM-Infinistream",

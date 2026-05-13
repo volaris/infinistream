@@ -9,11 +9,13 @@
   --color-background: #fff;
 }
 
-/* Pin the body to the e-ink panel's physical dimensions (800×480 at 80 DPI).
- * Puppeteer captures at 800×480 px; these fixed inch values match that viewport
- * so the layout does not reflow when the screenshot is taken.
+/* Render at a slightly larger canvas (960×624 at 96 DPI) so components have
+ * room to breathe, then let display.py LANCZOS-scale down to 800×480 for
+ * the panel. Puppeteer viewport must match these dimensions.
  */
 body {
-  height: 6.5in;
-  width: 10in;
+  width: 1040px;
+  height: 525px;
+  overflow: hidden;
+  zoom: .7;
 }

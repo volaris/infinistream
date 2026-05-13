@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """
-Dither a PNG screenshot to 1-bit B/W and push to the Waveshare 7.5" V2
+Dither a PIL image to 1-bit B/W and push to the Waveshare 7.5" V2
 e-ink display (epd7in5_V2, 800x480).
 
 Usage: python3 display.py <image_path>
-
-Install the Waveshare driver from GitHub (not on PyPI):
-  git clone https://github.com/waveshareteam/e-Paper.git
-  pip install -r e-Paper/RaspberryPi_JetsonNano/python/requirements.txt
 """
 
 import sys
@@ -18,11 +14,26 @@ REFRESH_COUNTER_FILE = "/tmp/infinistream_refresh_count"
 FULL_REFRESH_INTERVAL = 10
 
 
-def dither_to_bw(image_path: str) -> Image.Image:
-    """Load image, resize to 800x480, return 1-bit Floyd-Steinberg dithered image."""
-    img = Image.open(image_path).convert("RGB")
-    img = img.resize((800, 480), Image.LANCZOS)
-    return img.convert("1")  # PIL applies Floyd-Steinberg dithering by default
+DISPLAY_W, DISPLAY_H = 800, 480
+
+
+def dither_to_bw(img: Image.Image) -> Image.Image:
+    """Scale image to fit 800×480 (letterbox with white), return 1-bit dithered image."""
+    img = img.convert("RGB")
+    scale = min(DISPLAY_W / img.width, DISPLAY_H / img.height)
+    scaled_w = round(img.width * scale)
+    scaled_h = round(img.height * scale)
+    paste_x  = (DISPLAY_W - scaled_w) // 2
+    paste_y  = (DISPLAY_H - scaled_h) // 2
+    print(
+        f"dither: input {img.width}x{img.height} → scaled {scaled_w}x{scaled_h} "
+        f"(×{scale:.3f}), paste at ({paste_x},{paste_y})",
+        flush=True,
+    )
+    img = img.resize((scaled_w, scaled_h), Image.LANCZOS)
+    canvas = Image.new("RGB", (DISPLAY_W, DISPLAY_H), "white")
+    canvas.paste(img, (paste_x, paste_y))
+    return canvas.convert("1")
 
 
 def _read_counter() -> int:
@@ -52,17 +63,20 @@ def send_to_display(image: Image.Image) -> None:
 
         count = _read_counter()
         epd = epd7in5_V2.EPD()
-        epd.init()
         buf = epd.getbuffer(image)
 
         if count % FULL_REFRESH_INTERVAL == 0:
-            # Full refresh: sets the base image and clears any ghosting.
-            # This triggers the visible flash cycle, but only once every
+            # Full refresh every N updates to clear accumulated ghosting.
+            # Triggers the visible flash cycle, but only once every
             # FULL_REFRESH_INTERVAL updates.
-            epd.displayPartBaseImage(buf)
+            epd.init()
+            epd.display(buf)
         else:
             # Partial refresh: no flash, ~0.3 s vs ~4 s for full refresh.
-            epd.displayPartial(buf)
+            # E-paper retains its image while sleeping (non-volatile), so
+            # init_part() re-arms the controller without clearing the screen.
+            epd.init_part()
+            epd.display_Partial(buf, 0, 0, epd.width, epd.height)
 
         epd.sleep()
         _write_counter(count + 1)
@@ -74,5 +88,5 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: display.py <image_path>", file=sys.stderr)
         sys.exit(1)
-    bw_image = dither_to_bw(sys.argv[1])
+    bw_image = dither_to_bw(Image.open(sys.argv[1]))
     send_to_display(bw_image)
