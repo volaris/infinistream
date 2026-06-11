@@ -1,0 +1,22 @@
+[Unit]
+Description=Infinistream Controller
+After=network.target
+
+[Service]
+# Set the user and group that will run the application
+User=lhaury
+Group=lhaury
+
+# The directory containing your pyproject.toml
+WorkingDirectory=/home/lhaury/infinistream
+
+# Use the full path to the uv binary
+# 'uv run' will handle environment synchronization and dependency checks
+ExecStart=/home/lhaury/.local/bin/uv run infinistream-controller
+
+# Recommended for production services
+Restart=always
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

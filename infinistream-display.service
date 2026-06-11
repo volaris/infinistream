@@ -1,0 +1,20 @@
+[Unit]
+Description=Infinistream Display Service
+# Ensure Docker is running before starting this service
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Set the directory where your docker-compose.yml is located
+WorkingDirectory=/home/lhaury/infinistream
+Type=oneshot
+RemainAfterExit=yes
+
+# Start the containers in detached mode
+ExecStart=/usr/bin/docker compose up -d --remove-orphans magicmirror eink-service
+# Stop the containers when the service stops
+ExecStop=/usr/bin/docker compose down
+
+[Install]
+# Start the service automatically at boot
+WantedBy=multi-user.target

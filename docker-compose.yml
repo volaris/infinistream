@@ -8,6 +8,10 @@ services:
     environment:
       EINK_SERVICE_URL: "http://eink-service:3001/trigger"
     restart: unless-stopped
+    logging:
+      driver: "journald"
+      options:
+        tag: "{{.Name}}"
 
   eink-service:
     build:
@@ -30,6 +34,10 @@ services:
       - /sys/firmware/devicetree/base:/proc/device-tree:ro
     privileged: true
     restart: unless-stopped
+    logging:
+      driver: "journald"
+      options:
+        tag: "{{.Name}}"
 
   comms-service:
     build:

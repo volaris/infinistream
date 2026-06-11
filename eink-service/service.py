@@ -10,7 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from PIL import Image
 
-from display import dither_to_bw, send_to_display
+from display import dither_to_bw, send_to_display, startup_clear
 
 MAGICMIRROR_URL   = os.environ.get("MAGICMIRROR_URL",      "http://localhost:8080")
 CHROMIUM_PATH     = os.environ.get("CHROMIUM_PATH",        "/usr/bin/chromium")
@@ -81,6 +81,7 @@ def trigger():
 
 
 def _startup_refresh():
+    startup_clear()
     print(f"Waiting {MM_STARTUP_DELAY}s for MagicMirror to render...", flush=True)
     time.sleep(MM_STARTUP_DELAY)
     if _lock.acquire(blocking=False):

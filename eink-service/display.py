@@ -49,6 +49,24 @@ def _write_counter(n: int) -> None:
         f.write(str(n))
 
 
+def startup_clear() -> None:
+    """Full black/white sweep on startup to clear persistent soak artifacts.
+
+    epd.Clear() resets both old and new frame buffers, which is the only way
+    to eliminate artifacts that survive regular full refreshes after long soaks.
+    """
+    try:
+        from waveshare_epd import epd7in5_V2
+
+        epd = epd7in5_V2.EPD()
+        epd.init()
+        epd.Clear()
+        epd.sleep()
+        print("Startup clear complete.", flush=True)
+    except (ImportError, RuntimeError) as exc:
+        print(f"Display hardware not available (startup clear skipped): {exc}", file=sys.stderr)
+
+
 def send_to_display(image: Image.Image) -> None:
     """Push a 1-bit image to the Waveshare 7.5" V2 display.
 
