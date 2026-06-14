@@ -13,8 +13,9 @@ issues cannot affect the control loop.
 | Controller SBC        | Raspberry Pi            | —                | Runs Python control loop               |
 | ADC / GPIO board      | Waveshare ADS1263 HAT   | SPI (bus 0)      | 24-bit analog reads + GPIO digital I/O |
 | Relay board           | Devantech ETH008        | TCP/IP           | Controls all valves and pumps          |
-| Flow sensor (inlet)   | Gredia GR-S403          | Analog (0–5 V)   | Measures incoming flow rate            |
-| Flow sensor (outlet)  | Gredia GR-S403          | Analog (0–5 V)   | Measures outgoing flow rate            |
+| Flow sensor (drain)   | Gredia GR-S403          | Analog (0–5 V)   | Measures shower drain flow rate        |
+| Flow sensor (supply)  | Gredia GR-S403          | Analog (0–5 V)   | Measures supply flow to shower head    |
+| Flow sensor (return)  | Gredia GR-S403          | Analog (0–5 V)   | Measures return pump output flow       |
 | Turbidity sensor      | DFRobot KS0414          | Analog (0–5 V)   | Measures water clarity in NTU          |
 | Mode select switch    | 3-position rotary       | Digital GPIO     | Operator mode selection                |
 
@@ -33,16 +34,20 @@ issues cannot affect the control loop.
 ## ADC Board — Waveshare ADS1263 HAT
 
 - **Driver:** `ADS1263.py` (Waveshare SDK, adapted)
-- **ADC resolution:** 24-bit (ADC1 mode), full-scale value = `2^24 = 16,777,216`
+- **ADC resolution:** 32-bit signed (ADC1 mode), full-scale value = `2^31 - 1 = 2,147,483,647`
 - **Interface:** SPI bus 1
 
 ### Analog Input Channels
 
-| Channel | Signal           | Sensor         | Units  | Full-Scale Value |
-|---------|------------------|----------------|--------|------------------|
-| 0       | Flow in          | Gredia GR-S403 | L/min  | 20.0             |
-| 1       | Flow out         | Gredia GR-S403 | L/min  | 20.0             |
-| 2       | Turbidity        | DFRobot KS0414 | NTU    | 4000.0           |
+| Channel | Signal          | Sensor         | Units  | Full-Scale Value | Notes                        |
+|---------|-----------------|----------------|--------|------------------|------------------------------|
+| 0       | Flow in (drain) | Gredia GR-S403 | L/min  | 20.0             | Shower pan → filter          |
+| 1       | Flow out (supply)| Gredia GR-S403| L/min  | 20.0             | Supply pump → shower head    |
+| 2       | Turbidity       | DFRobot KS0414 | NTU    | 4000.0           | Inverted: high V = clear     |
+| 6       | Flow return     | Gredia GR-S403 | L/min  | 20.0             | Drain pump outlet; dry-run protection |
+
+Channels 3–5 are reserved for digital GPIO (mode select switch). Channel 6 is the next
+available analog input.
 
 #### Calibration Formula
 
@@ -51,9 +56,10 @@ sensor_value = (raw_adc / full_scale_adc) * full_scale_sensor + offset
 ```
 
 - `raw_adc`: raw integer from `ADS1263_GetChannalValue(channel)`
-- `full_scale_adc`: `16,777,216` (2^24)
+- `full_scale_adc`: `2,147,483,647` (2^31 - 1, signed 32-bit max)
 - `full_scale_sensor`: sensor-specific (see table above)
 - `offset`: `0.0` for all current sensors
+- For the turbidity sensor, `inverted = True`: ratio is computed as `1.0 - ratio` before scaling
 
 ### Digital Input Channels (Mode Select)
 
@@ -78,8 +84,8 @@ The relay board is accessed over Ethernet using the `devantech-eth` Python libra
 
 | Parameter | Value                           |
 |-----------|---------------------------------|
-| IP        | `192.168.1.50`                  |
-| Port      | `17123`                         |
+| IP        | `192.168.2.3`                   |
+| Port      | `17494`                         |
 | Protocol  | TCP (Devantech binary protocol) |
 
 ### Relay Channel Assignments
@@ -103,15 +109,19 @@ Relay state is set via `devantech_eth.setDigitalState(channel, 0, state)`.
 
 Full relay state for each mode. `1` = energized (valve open / device on), `0` = de-energized.
 
-| Relay | Actuator           | DRAIN | FLUSH | SHOWER | SANITIZE | SAFE |
-|-------|--------------------|-------|-------|--------|----------|------|
-| 1     | Post-filter valve  | 0     | 0     | 1      | 0        | 0    |
-| 2     | Sani-loop valve    | 0     | 0     | 0      | 1        | 0    |
-| 3     | Flush valve        | 0     | 1     | 0      | 0        | 0    |
-| 4     | Drain valve        | 1     | 0     | 0      | 0        | 0    |
-| 5     | Drain pump         | 1     | 1     | 1      | 0        | 0    |
-| 6     | Supply pump        | 0     | 1     | 1      | 1        | 0    |
-| 7     | UV-C light         | 0     | 0     | 1      | 1        | 0    |
+| Relay | Actuator           | DRAIN | FLUSH | SHOWER        | SANITIZE | SAFE |
+|-------|--------------------|-------|-------|---------------|----------|------|
+| 1     | Post-filter valve  | 0     | 0     | 1             | 0        | 0    |
+| 2     | Sani-loop valve    | 0     | 0     | 0             | 1        | 0    |
+| 3     | Flush valve        | 0     | 1     | 0             | 0        | 0    |
+| 4     | Drain valve        | 1     | 0     | 0             | 0        | 0    |
+| 5     | Drain pump         | 1     | 1     | state machine | 0        | 0    |
+| 6     | Supply pump        | 0     | 1     | 1             | 1        | 0    |
+| 7     | UV-C light         | 0     | 0     | 1             | 1        | 0    |
+
+In SHOWER mode the drain pump (relay 5) is controlled by the dry-run protection state
+machine rather than being held permanently on. See `spec-behavioral.md` for the full
+state machine description.
 
 ---
 
