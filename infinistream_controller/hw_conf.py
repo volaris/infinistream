@@ -41,6 +41,14 @@ FLOW_OUT_SENSOR = AnalogInputConfig(
     full_scale_sensor=20.0,
     offset=0.0
 )
+FLOW_RETURN_SENSOR = AnalogInputConfig(
+    channel=6,
+    sensor_type="flow",
+    units="L/min",
+    full_scale_adc=2**31 - 1,
+    full_scale_sensor=20.0,
+    offset=0.0
+)
 TURBIDITY_SENSOR = AnalogInputConfig(
     channel=2,
     sensor_type="turbidity",

@@ -62,15 +62,18 @@ Water path: `tank → faucet`
 
 ## Actuator States per Mode
 
-| Actuator            | DRAIN  | FLUSH  | SHOWER | SANITIZE |
-|---------------------|--------|--------|--------|----------|
-| Post-filter valve   | CLOSED | CLOSED | OPEN   | CLOSED   |
-| Sani-loop valve     | CLOSED | CLOSED | CLOSED | OPEN     |
-| Flush valve         | CLOSED | OPEN   | CLOSED | CLOSED   |
-| Drain valve         | OPEN   | CLOSED | CLOSED | CLOSED   |
-| Drain pump          | ON     | ON     | ON     | OFF      |
-| Supply pump         | OFF    | ON     | ON     | ON       |
-| UV light            | OFF    | OFF    | ON     | ON       |
+| Actuator            | DRAIN  | FLUSH  | SHOWER         | SANITIZE |
+|---------------------|--------|--------|----------------|----------|
+| Post-filter valve   | CLOSED | CLOSED | OPEN           | CLOSED   |
+| Sani-loop valve     | CLOSED | CLOSED | CLOSED         | OPEN     |
+| Flush valve         | CLOSED | OPEN   | CLOSED         | CLOSED   |
+| Drain valve         | OPEN   | CLOSED | CLOSED         | CLOSED   |
+| Drain pump          | ON     | ON     | state machine  | OFF      |
+| Supply pump         | OFF    | ON     | ON             | ON       |
+| UV light            | OFF    | OFF    | ON             | ON       |
+
+In SHOWER mode the drain pump is not controlled by `set_shower()` but by a separate
+dry-run protection state machine (`_step_drain_pump`). See below.
 
 ### Safe / Fault State
 
@@ -116,6 +119,62 @@ transitions to SANITIZE if the system appears idle.
 
 ---
 
+---
+
+## Drain Pump Dry-Run Protection (SHOWER mode only)
+
+To prevent the return pump from running dry and damaging its seal, the controller
+manages the drain pump through a four-state machine during SHOWER mode. The machine
+uses two flow signals:
+
+- **flow_out** — water draining from the shower pan (`FLOW_OUT_SENSOR`, channel 1).
+  Indicates the shower is active and the basin is receiving water.
+- **flow_return** — water leaving the drain pump outlet (`FLOW_RETURN_SENSOR`, channel 6).
+  Confirms the pump is actually moving water, not spinning dry.
+
+### States
+
+| State     | Pump | Meaning                                                            |
+|-----------|------|--------------------------------------------------------------------|
+| `IDLE`    | OFF  | Waiting for shower drain flow before attempting to pump            |
+| `PRIMING` | ON   | Pump running; waiting up to 15 s for return flow to confirm water  |
+| `PUMPING` | ON   | Return flow confirmed; pump runs until basin empties               |
+| `WAITING` | OFF  | Prime attempt failed; waiting 30 s before retrying                 |
+
+### Transition Rules
+
+```
+IDLE
+  flow_out detected → PRIMING (pump ON)
+
+PRIMING
+  flow_return detected → PUMPING
+  flow_out lost → IDLE (pump OFF)
+  15 s elapsed, no flow_return → WAITING (pump OFF)
+
+PUMPING
+  flow_return lost (basin empty) → IDLE (pump OFF)
+  (flow_out dropping does NOT stop the pump — basin is drained first)
+
+WAITING
+  flow_out lost → IDLE
+  30 s elapsed → IDLE → immediately evaluates IDLE rules (PRIMING if flow_out active)
+```
+
+The WAITING → IDLE transition falls through to IDLE evaluation within the same control
+loop step, so priming restarts without a one-second gap.
+
+### State Persistence
+
+The drain pump state machine resets to IDLE whenever:
+- The mode selector leaves SHOWER (including auto-sanitize)
+- `safe()` is called
+
+Constants: `_PRIME_TIMEOUT = 15 s`, `_PRIME_RETRY_INTERVAL = 30 s`,
+`_FLOW_OUT_THRESHOLD = 0.1 L/min`, `_FLOW_RETURN_THRESHOLD = 0.1 L/min`.
+
+---
+
 ## Control Loop
 
 The main loop executes the following steps once per second:
@@ -123,8 +182,9 @@ The main loop executes the following steps once per second:
 1. Read all sensors (`read_sensors`)
 2. Determine the effective mode, applying auto-sanitize logic (`determine_derived_mode`)
 3. Actuate relays to match the effective mode (`set_mode`)
-4. Log status to stdout (`display_status`)
-5. If the display update throttle allows it, POST current mode and turbidity to the
+4. Advance the drain pump state machine, which controls `DRAIN_PUMP_POWER` in SHOWER mode (`_step_drain_pump`)
+5. Log status to stdout (`display_status`)
+6. If the display update throttle allows it, POST current mode and turbidity to the
    MagicMirror webhook (`display_status`)
 
 ---

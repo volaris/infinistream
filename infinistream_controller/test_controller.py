@@ -4,7 +4,7 @@ from pytest_bdd import scenarios, given, when, then, parsers
 from unittest.mock import MagicMock, patch
 import datetime
 
-from infinistream_controller.controller import Controller
+from infinistream_controller.controller import Controller, DrainPumpState
 from infinistream_controller import hw_conf
 import infinistream_controller.controller as controller_module
 
@@ -24,7 +24,10 @@ def controller():
         gpio_mode = {"MODE_DIGITAL": 1}
         ctrl = Controller(ads, gpio_mode)
         ctrl.mock_requests = mock_requests
-        # Set static vars on the static method, not the instance
+        # Per-channel ADC value dict — Given steps write here; side_effect reads from it.
+        # Unit tests may override side_effect directly for custom behaviour.
+        ctrl._adc_values = {}
+        ctrl.ads.ADS1263_GetChannalValue.side_effect = lambda ch: ctrl._adc_values.get(ch, 0)
         Controller.determine_derived_mode.last_flow_detected = datetime.datetime.now()
         Controller.determine_derived_mode.sanitize_off_time = datetime.datetime.now()
         Controller.determine_derived_mode.sani_on = False
@@ -43,12 +46,45 @@ def set_mode_select(controller, mode):
 
 @given("flow out sensor reads above threshold")
 def set_flow_out_high(controller):
-    controller.ads.ADS1263_GetChannalValue.side_effect = lambda ch: hw_conf.FLOW_OUT_SENSOR.full_scale_adc if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
+    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
 
 @given("flow out sensor reads below threshold for a long period")
 def set_flow_out_low(controller):
-    # Simulate flow below threshold
-    controller.ads.ADS1263_GetChannalValue.side_effect = lambda ch: 0
+    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = 0
+
+@given("flow return sensor reads above threshold")
+def set_flow_return_high(controller):
+    controller._adc_values[hw_conf.FLOW_RETURN_SENSOR.channel] = hw_conf.FLOW_RETURN_SENSOR.full_scale_adc
+
+@given("the drain pump is in priming state")
+def set_drain_pump_priming(controller):
+    controller._drain_pump_state = DrainPumpState.PRIMING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.devantech.setDigitalState.reset_mock()
+
+@given("the drain pump is in priming state with timeout elapsed")
+def set_drain_pump_priming_timeout(controller):
+    controller._drain_pump_state = DrainPumpState.PRIMING
+    controller._drain_pump_state_entered = (
+        datetime.datetime.now()
+        - datetime.timedelta(seconds=controller_module._PRIME_TIMEOUT + 1)
+    )
+    controller.devantech.setDigitalState.reset_mock()
+
+@given("the drain pump is in pumping state")
+def set_drain_pump_pumping(controller):
+    controller._drain_pump_state = DrainPumpState.PUMPING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.devantech.setDigitalState.reset_mock()
+
+@given("the drain pump is in waiting state with retry interval elapsed")
+def set_drain_pump_waiting_elapsed(controller):
+    controller._drain_pump_state = DrainPumpState.WAITING
+    controller._drain_pump_state_entered = (
+        datetime.datetime.now()
+        - datetime.timedelta(seconds=controller_module._PRIME_RETRY_INTERVAL + 1)
+    )
+    controller.devantech.setDigitalState.reset_mock()
 
 @when("the controller reads sensors and determines mode")
 def read_and_determine_mode(controller):
@@ -86,11 +122,12 @@ def check_actuators(controller, mode):
             mock_call(hw_conf.UVC_POWER.channel, 0, 0),
         ],
         "shower": [
+            # Drain pump is managed by the state machine, not checked here.
+            # Use the drain pump BDD scenarios or unit tests to verify its behaviour.
             mock_call(hw_conf.POST_FILTER_VALVE.channel, 0, hw_conf.OPEN),
             mock_call(hw_conf.SANI_LOOP_VALVE.channel, 0, hw_conf.CLOSED),
             mock_call(hw_conf.FLUSH_VALVE.channel, 0, hw_conf.CLOSED),
             mock_call(hw_conf.DRAIN_VALVE.channel, 0, hw_conf.CLOSED),
-            mock_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 1),
             mock_call(hw_conf.SUPPLY_PUMP_POWER.channel, 0, 1),
             mock_call(hw_conf.UVC_POWER.channel, 0, 1),
         ],
@@ -112,11 +149,15 @@ def check_actuators(controller, mode):
             "sanitize": hw_conf.MODE_SANI,
         }[mode]
     controller.devantech.setDigitalState.assert_has_calls(expected_calls[mode], any_order=False)
-    assert controller.devantech.setDigitalState.call_count == len(expected_calls[mode])
+    # SHOWER allows extra relay calls from the drain pump state machine
+    if mode == "shower":
+        assert controller.devantech.setDigitalState.call_count >= len(expected_calls[mode])
+    else:
+        assert controller.devantech.setDigitalState.call_count == len(expected_calls[mode])
 
 @given("the flow in sensor raw value is maximum")
 def set_flow_in_max(controller):
-    controller.ads.ADS1263_GetChannalValue.side_effect = lambda ch: hw_conf.FLOW_IN_SENSOR.full_scale_adc if ch == hw_conf.FLOW_IN_SENSOR.channel else 0
+    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
 
 @when("the controller decodes the analog value")
 def decode_analog(controller):
@@ -145,6 +186,10 @@ def set_sanitize_expired(controller):
     Controller.determine_derived_mode.sanitize_off_time = (
         datetime.datetime.now() - datetime.timedelta(seconds=1)
     )
+
+@then(parsers.parse('the drain pump state should be "{state}"'))
+def check_drain_pump_state(controller, state):
+    assert controller._drain_pump_state == DrainPumpState(state)
 
 @then(parsers.parse('the display webhook should receive mode "{mode}" and the current turbidity'))
 def check_webhook_mode_and_turbidity(controller, mode):
@@ -292,3 +337,113 @@ def test_turbidity_tier_boundaries(controller):
     assert Controller._turbidity_tier(99)  == 1
     assert Controller._turbidity_tier(100) == 2
     assert Controller._turbidity_tier(500) == 2
+
+# --- Drain pump state machine unit tests ---
+
+def _shower_bits(controller):
+    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+
+def test_drain_pump_starts_priming_when_shower_active(controller):
+    """Drain pump turns on and enters PRIMING when shower drain flow is detected."""
+    _shower_bits(controller)
+    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.PRIMING
+    controller.devantech.setDigitalState.assert_any_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 1)
+
+def test_drain_pump_prime_timeout_transitions_to_waiting(controller):
+    """After PRIME_TIMEOUT with no return flow, drain pump turns off and enters WAITING."""
+    _shower_bits(controller)
+    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller._drain_pump_state = DrainPumpState.PRIMING
+    controller._drain_pump_state_entered = (
+        datetime.datetime.now()
+        - datetime.timedelta(seconds=controller_module._PRIME_TIMEOUT + 1)
+    )
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.WAITING
+    controller.devantech.setDigitalState.assert_any_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 0)
+
+def test_drain_pump_transitions_to_pumping_on_return_flow(controller):
+    """Return flow during priming transitions drain pump to PUMPING without relay change."""
+    _shower_bits(controller)
+    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel]    = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller._adc_values[hw_conf.FLOW_RETURN_SENSOR.channel] = hw_conf.FLOW_RETURN_SENSOR.full_scale_adc
+    controller._drain_pump_state = DrainPumpState.PRIMING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.PUMPING
+
+def test_drain_pump_stops_when_return_flow_drops(controller):
+    """Loss of return flow while pumping turns off the drain pump and returns to IDLE."""
+    _shower_bits(controller)
+    # No flow anywhere
+    controller._drain_pump_state = DrainPumpState.PUMPING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.IDLE
+    controller.devantech.setDigitalState.assert_any_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 0)
+
+def test_drain_pump_continues_pumping_when_shower_drain_stops(controller):
+    """Drain pump stays in PUMPING if return flow persists even after shower drain flow stops."""
+    _shower_bits(controller)
+    controller._adc_values[hw_conf.FLOW_RETURN_SENSOR.channel] = hw_conf.FLOW_RETURN_SENSOR.full_scale_adc
+    # flow_out = 0 (not set)
+    controller._drain_pump_state = DrainPumpState.PUMPING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.PUMPING
+
+def test_drain_pump_stops_when_return_flow_stops_after_shower_ends(controller):
+    """Drain pump stops (IDLE) when return flow stops, even if shower drain also stopped."""
+    _shower_bits(controller)
+    # Both flows = 0
+    controller._drain_pump_state = DrainPumpState.PUMPING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.IDLE
+
+def test_drain_pump_stops_priming_when_shower_drain_flow_stops(controller):
+    """If shower drain flow drops during priming, drain pump turns off and returns to IDLE."""
+    _shower_bits(controller)
+    # flow_out = 0 (not set)
+    controller._drain_pump_state = DrainPumpState.PRIMING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.IDLE
+    controller.devantech.setDigitalState.assert_any_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 0)
+
+def test_drain_pump_retries_priming_in_same_step_after_waiting_interval(controller):
+    """After PRIME_RETRY_INTERVAL with active drain flow, drain pump starts priming in the same step."""
+    _shower_bits(controller)
+    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller._drain_pump_state = DrainPumpState.WAITING
+    controller._drain_pump_state_entered = (
+        datetime.datetime.now()
+        - datetime.timedelta(seconds=controller_module._PRIME_RETRY_INTERVAL + 1)
+    )
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.PRIMING
+    controller.devantech.setDigitalState.assert_any_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 1)
+
+def test_drain_pump_waiting_stays_if_drain_flow_stops(controller):
+    """WAITING clears to IDLE (pump stays off) when shower drain flow stops."""
+    _shower_bits(controller)
+    # flow_out = 0: WAITING + no flow_out → IDLE → no priming (still no flow_out)
+    controller._drain_pump_state = DrainPumpState.WAITING
+    controller._drain_pump_state_entered = datetime.datetime.now()
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.IDLE
+
+def test_drain_pump_state_resets_to_idle_on_non_shower_mode(controller):
+    """Drain pump state resets to IDLE when mode changes away from SHOWER."""
+    # mode bits = drain (0,0,0)
+    controller._drain_pump_state = DrainPumpState.PUMPING
+    controller.step()
+    assert controller._drain_pump_state == DrainPumpState.IDLE
+
+def test_safe_resets_drain_pump_state(controller):
+    """safe() resets drain pump state to IDLE in addition to de-energizing all relays."""
+    controller._drain_pump_state = DrainPumpState.PUMPING
+    controller.safe()
+    assert controller._drain_pump_state == DrainPumpState.IDLE
