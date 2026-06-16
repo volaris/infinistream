@@ -10,7 +10,7 @@ This guide covers everything needed to deploy and operate Infinistream at a site
 |---------------------|-------------------------|------------------------------------|
 | SBC                 | Raspberry Pi (any model)| Runs Python control loop           |
 | ADC board           | Waveshare ADS1263 HAT   | SPI — reads sensors and mode switch|
-| Relay board         | Devantech ETH008        | Ethernet, fixed IP 192.168.1.50    |
+| Relay board         | Devantech ETH008        | Ethernet, fixed IP 192.168.2.3     |
 | Flow sensor (drain) | Gredia GR-S403          | Analog 0–5 V, ADC channel 0       |
 | Flow sensor (supply)| Gredia GR-S403          | Analog 0–5 V, ADC channel 1       |
 | Flow sensor (return)| Gredia GR-S403          | Analog 0–5 V, ADC channel 6       |

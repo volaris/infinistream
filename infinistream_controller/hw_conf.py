@@ -92,7 +92,7 @@ OPEN   = 1
 CLOSED = 0
 
 # MagicMirror² display webhook
-MAGICMIRROR_WEBHOOK_URL = os.environ.get("MAGICMIRROR_WEBHOOK_URL", "http://192.168.1.61:8080/shower-update")
+MAGICMIRROR_WEBHOOK_URL = os.environ.get("MAGICMIRROR_WEBHOOK_URL", "http://192.168.2.2:8080/shower-update")
 
 # Turbidity tier thresholds (NTU). Tier 0 = clean, 1 = warning, 2 = unsafe.
 # Must match the turbidityLevels config in MMM-Infinistream.

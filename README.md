@@ -37,7 +37,7 @@ showerhead — reducing household water consumption at remote off-grid installat
 ┌──────────────────────┐
 │  Devantech ETH008    │
 │  Relay Board         │
-│  (192.168.1.50)      │
+│  (192.168.2.3)       │
 │                      │
 │  R1: Post-filter     │
 │  R2: Sani-loop       │

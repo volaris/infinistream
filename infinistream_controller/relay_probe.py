@@ -5,7 +5,7 @@ from devantech_eth import eth008
 
 
 # Create an instance of the ETH002 class and try connecting to the module
-module = eth008.ETH008(ip = "192.168.1.63", port = 17494, password = "password")
+module = eth008.ETH008(ip = "192.168.2.3", port = 17494, password = "password")
 module.connect()
 
 # Toggle digital output 1
