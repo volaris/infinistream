@@ -38,6 +38,7 @@ function ctx(mode = "SHOWER", turbidity = 0, configOverrides = {}) {
 
 describe("getModeIconElement", () => {
   test.each([
+    ["IDLE",      "fa-power-off"],
     ["SHOWER",    "fa-shower"],
     ["DRAIN",     "fa-faucet-drip"],
     ["FLUSH",     "fa-faucet-drip"],

@@ -13,7 +13,7 @@ from infinistream_controller.hw_conf import (
     MODE_SELECT_CHANNELS,
     POST_FILTER_VALVE, SANI_LOOP_VALVE, FLUSH_VALVE, DRAIN_VALVE,
     DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
-    MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
+    MODE_IDLE, MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
     MODE_NAMES, MAGICMIRROR_WEBHOOK_URL,
     TURBIDITY_TIERS, DISPLAY_UPDATE_INTERVAL,
     RelayChannel
@@ -89,15 +89,17 @@ class Controller:
     def decode_mode_bits(self, bits):
         val = (bits[0] << 2) | (bits[1] << 1) | bits[2]
         if val == 0b000:
-            return MODE_DRAIN
+            return MODE_IDLE
         elif val == 0b001:
-            return MODE_FLUSH
-        elif val == 0b010:
             return MODE_SHOWER
-        elif val == 0b100:
+        elif val == 0b010:
             return MODE_SANI
+        elif val == 0b011:
+            return MODE_DRAIN
+        elif val == 0b100:
+            return MODE_FLUSH
         else:
-            return MODE_DRAIN  # fallback
+            return MODE_IDLE  # fault: unknown pattern → safe
 
     def decode_analog(self, raw, config):
         ratio = raw / config.full_scale_adc
@@ -107,6 +109,15 @@ class Controller:
 
     def set_relay_channel(self, channel: RelayChannel, state):
         self.devantech.setDigitalState(channel.channel, 0, state)
+
+    def set_idle(self):
+        self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
+        self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
+        self.set_relay_channel(FLUSH_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_VALVE, CLOSED)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 0)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 0)
+        self.set_relay_channel(UVC_POWER, 0)
 
     def set_drain(self):
         self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
@@ -145,7 +156,9 @@ class Controller:
         self.set_relay_channel(DRAIN_PUMP_POWER, 0)
 
     def set_mode(self, mode_select):
-        if mode_select == MODE_DRAIN:
+        if mode_select == MODE_IDLE:
+            self.set_idle()
+        elif mode_select == MODE_DRAIN:
             self.set_drain()
         elif mode_select == MODE_FLUSH:
             self.set_flush()

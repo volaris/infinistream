@@ -85,10 +85,11 @@ Module.register("MMM-Infinistream", {
   getModeIconElement: function () {
     const modeIcons = {
       CONNECTING: ["fa-solid", "fa-spinner"],
-      SHOWER: ["fa-solid", "fa-shower"],
-      DRAIN: ["fa-solid", "fa-faucet-drip"],
-      FLUSH: ["fa-solid", "fa-faucet-drip"],
-      SANITIZE: ["fa-solid", "fa-sun"]
+      IDLE:       ["fa-solid", "fa-power-off"],
+      SHOWER:     ["fa-solid", "fa-shower"],
+      DRAIN:      ["fa-solid", "fa-faucet-drip"],
+      FLUSH:      ["fa-solid", "fa-faucet-drip"],
+      SANITIZE:   ["fa-solid", "fa-sun"]
     };
 
     const chosen = modeIcons[this.mode] || ["fa-solid", "fa-question"];

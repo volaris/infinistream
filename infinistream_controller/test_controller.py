@@ -38,10 +38,11 @@ def controller():
 @given(parsers.parse('the mode select GPIOs indicate "{mode}"'))
 def set_mode_select(controller, mode):
     mode_map = {
-        "drain": [0,0,0],
-        "flush": [0,0,1],
-        "shower": [0,1,0],
-        "sanitize": [1,0,0]
+        "idle":     [0,0,0],
+        "shower":   [0,0,1],
+        "sanitize": [0,1,0],
+        "drain":    [0,1,1],
+        "flush":    [1,0,0],
     }
     bits = mode_map[mode]
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
@@ -106,6 +107,15 @@ def read_and_determine_mode_timeout(controller):
 def check_actuators(controller, mode):
     from unittest.mock import call as mock_call
     expected_calls = {
+        "idle": [
+            mock_call(hw_conf.POST_FILTER_VALVE.channel, 0, hw_conf.CLOSED),
+            mock_call(hw_conf.SANI_LOOP_VALVE.channel, 0, hw_conf.CLOSED),
+            mock_call(hw_conf.FLUSH_VALVE.channel, 0, hw_conf.CLOSED),
+            mock_call(hw_conf.DRAIN_VALVE.channel, 0, hw_conf.CLOSED),
+            mock_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 0),
+            mock_call(hw_conf.SUPPLY_PUMP_POWER.channel, 0, 0),
+            mock_call(hw_conf.UVC_POWER.channel, 0, 0),
+        ],
         "drain": [
             mock_call(hw_conf.POST_FILTER_VALVE.channel, 0, hw_conf.CLOSED),
             mock_call(hw_conf.SANI_LOOP_VALVE.channel, 0, hw_conf.CLOSED),
@@ -146,9 +156,10 @@ def check_actuators(controller, mode):
     }
     if not hasattr(controller, "mode"):
         controller.mode = {
-            "drain": hw_conf.MODE_DRAIN,
-            "flush": hw_conf.MODE_FLUSH,
-            "shower": hw_conf.MODE_SHOWER,
+            "idle":     hw_conf.MODE_IDLE,
+            "drain":    hw_conf.MODE_DRAIN,
+            "flush":    hw_conf.MODE_FLUSH,
+            "shower":   hw_conf.MODE_SHOWER,
             "sanitize": hw_conf.MODE_SANI,
         }[mode]
     controller.devantech.setDigitalState.assert_has_calls(expected_calls[mode], any_order=False)
@@ -262,7 +273,7 @@ def test_flow_threshold_above_boundary_updates_timestamp(controller):
         lambda ch: threshold_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
     )
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]  # shower
+    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected > before
@@ -279,7 +290,7 @@ def test_flow_threshold_below_boundary_does_not_update_timestamp(controller):
         lambda ch: below_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
     )
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]  # shower
+    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected == before
@@ -302,9 +313,9 @@ def test_throttle_sends_on_mode_change(controller):
     """Mode change immediately overrides the throttle."""
     controller.step()  # DRAIN (all bits 0)
     controller.mock_requests.post.reset_mock()
-    # Switch to SHOWER (bits 0,1,0)
+    # Switch to SHOWER (bits 0,0,1)
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
     controller.step()
     assert controller.mock_requests.post.call_count == 1
     payload = controller.mock_requests.post.call_args.kwargs["json"]
@@ -348,7 +359,7 @@ def test_turbidity_tier_boundaries(controller):
 
 def _shower_bits(controller):
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
 
 def test_drain_pump_starts_priming_when_shower_active(controller):
     """Drain pump turns on and enters PRIMING when shower drain flow is detected."""

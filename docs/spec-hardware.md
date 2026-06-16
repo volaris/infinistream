@@ -79,6 +79,15 @@ No external resistors required; RPi internal pull-downs (~50 kΩ) hold pins low 
 
 Bit assembly: `val = (bcm23 << 2) | (bcm24 << 1) | bcm25`
 
+| val    | Rotary position | Mode    |
+|--------|-----------------|---------|
+| 0b000  | 0 (open)        | IDLE    |
+| 0b001  | 1               | SHOWER  |
+| 0b010  | 2               | SANITIZE|
+| 0b011  | 3               | DRAIN   |
+| 0b100  | 4               | FLUSH   |
+| other  | fault           | IDLE    |
+
 ---
 
 ## Relay Board — Devantech ETH008
@@ -114,15 +123,15 @@ Relay state is set via `devantech_eth.setDigitalState(channel, 0, state)`.
 
 Full relay state for each mode. `1` = energized (valve open / device on), `0` = de-energized.
 
-| Relay | Actuator           | DRAIN | FLUSH | SHOWER        | SANITIZE | SAFE |
-|-------|--------------------|-------|-------|---------------|----------|------|
-| 1     | Post-filter valve  | 0     | 0     | 1             | 0        | 0    |
-| 2     | Sani-loop valve    | 0     | 0     | 0             | 1        | 0    |
-| 3     | Flush valve        | 0     | 1     | 0             | 0        | 0    |
-| 4     | Drain valve        | 1     | 0     | 0             | 0        | 0    |
-| 5     | Drain pump         | 1     | 1     | state machine | 0        | 0    |
-| 6     | Supply pump        | 0     | 1     | 1             | 1        | 0    |
-| 7     | UV-C light         | 0     | 0     | 1             | 1        | 0    |
+| Relay | Actuator           | IDLE | DRAIN | FLUSH | SHOWER        | SANITIZE | SAFE |
+|-------|--------------------|------|-------|-------|---------------|----------|------|
+| 1     | Post-filter valve  | 0    | 0     | 0     | 1             | 0        | 0    |
+| 2     | Sani-loop valve    | 0    | 0     | 0     | 0             | 1        | 0    |
+| 3     | Flush valve        | 0    | 0     | 1     | 0             | 0        | 0    |
+| 4     | Drain valve        | 0    | 1     | 0     | 0             | 0        | 0    |
+| 5     | Drain pump         | 0    | 1     | 1     | state machine | 0        | 0    |
+| 6     | Supply pump        | 0    | 0     | 1     | 1             | 1        | 0    |
+| 7     | UV-C light         | 0    | 0     | 0     | 1             | 1        | 0    |
 
 In SHOWER mode the drain pump (relay 5) is controlled by the dry-run protection state
 machine rather than being held permanently on. See `spec-behavioral.md` for the full

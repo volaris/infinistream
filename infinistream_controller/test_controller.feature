@@ -34,10 +34,15 @@ Feature: Shower panel controller modes and transitions
     When the controller decodes the analog value
     Then the result should be the sensor full scale
 
-  Scenario: Controller falls back to drain mode for unrecognized mode bits
+  Scenario: Controller sets actuators for idle mode
+    Given the mode select GPIOs indicate "idle"
+    When the controller reads sensors and determines mode
+    Then the controller should set actuators for "idle"
+
+  Scenario: Controller falls back to idle mode for unrecognized mode bits
     Given the mode select GPIOs indicate an unrecognized pattern
     When the controller reads sensors and determines mode
-    Then the controller should set actuators for "drain"
+    Then the controller should set actuators for "idle"
 
   Scenario: Controller returns to shower mode after sanitize timer expires
     Given the mode select GPIOs indicate "shower"
