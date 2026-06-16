@@ -10,7 +10,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from PIL import Image
 
-from display import dither_to_bw, send_to_display, startup_clear
+from display import prepare_image, send_to_display, startup_clear
 
 MAGICMIRROR_URL   = os.environ.get("MAGICMIRROR_URL",      "http://localhost:8080")
 CHROMIUM_PATH     = os.environ.get("CHROMIUM_PATH",        "/usr/bin/chromium")
@@ -39,6 +39,8 @@ def _init_browser():
         service=ChromeService(CHROMEDRIVER_PATH),
         options=options,
     )
+    _driver.set_page_load_timeout(30)
+    _driver.set_script_timeout(10)
     _driver.get(MAGICMIRROR_URL)
     print(f"Browser ready: {MAGICMIRROR_URL}", flush=True)
 
@@ -52,6 +54,9 @@ def _ensure_page_loaded():
 
 
 def _do_refresh():
+    # Hold the lock only for the Selenium screenshot.  The display write runs
+    # outside it so a hung SPI transfer doesn't block future trigger calls.
+    bw = None
     try:
         _ensure_page_loaded()
         img = Image.open(BytesIO(_driver.get_screenshot_as_png()))
@@ -66,11 +71,17 @@ def _do_refresh():
             f"body scroll: {vp['sw']}x{vp['sh']}",
             flush=True,
         )
-        send_to_display(dither_to_bw(img))
+        bw = prepare_image(img)
     except Exception as exc:
         print(f"Refresh failed: {exc}", file=sys.stderr, flush=True)
     finally:
         _lock.release()
+
+    if bw is not None:
+        try:
+            send_to_display(bw)
+        except Exception as exc:
+            print(f"Display write failed: {exc}", file=sys.stderr, flush=True)
 
 
 @app.post("/trigger")
@@ -81,7 +92,6 @@ def trigger():
 
 
 def _startup_refresh():
-    startup_clear()
     print(f"Waiting {MM_STARTUP_DELAY}s for MagicMirror to render...", flush=True)
     time.sleep(MM_STARTUP_DELAY)
     if _lock.acquire(blocking=False):
@@ -90,5 +100,6 @@ def _startup_refresh():
 
 if __name__ == "__main__":
     _init_browser()
+    startup_clear()  # must complete before Flask accepts requests to avoid SPI contention
     threading.Thread(target=_startup_refresh, daemon=True).start()
     app.run(host="0.0.0.0", port=PORT)

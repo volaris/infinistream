@@ -3,8 +3,8 @@
  * renders correctly on the panel without a pre-inversion step in display.py.
  */
 :root {
-  --color-text: #666;
-  --color-text-dimmed: #333;
+  --color-text: #333;
+  --color-text-dimmed: #666;
   --color-text-bright: #000;
   --color-background: #fff;
 }

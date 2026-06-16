@@ -2,7 +2,7 @@
 
 ## Running tests
 
-Tests live in `infinistream_controller/`. Run both suites after any controller change:
+### Controller (run after any controller change)
 
 ```bash
 PYTHONPATH=/workspaces/infinistream \
@@ -12,6 +12,21 @@ PYTHONPATH=/workspaces/infinistream \
 
 - `test_controller.py` — BDD + unit tests (mocked hardware, mocked HTTP)
 - `test_module_integration.py` — integration tests (mocked hardware, real HTTP over a local socket)
+
+### Eink service (run after any eink-service change)
+
+First-time setup:
+```bash
+python3.10 -m venv eink-service/venv
+eink-service/venv/bin/pip install -r eink-service/requirements.txt pytest
+```
+
+Run:
+```bash
+PYTHONPATH=/workspaces/infinistream \
+  eink-service/venv/bin/python -m pytest \
+  eink-service/test/test_display.test.py -v --import-mode=importlib
+```
 
 ## Keeping docs in sync
 
