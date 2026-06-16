@@ -42,11 +42,11 @@ describe("display/css/custom.css — light theme for e-ink", () => {
     expectVar("--color-text-bright", "#000");
   });
 
-  test("body height is pinned to 6.5in for the e-ink viewport", () => {
-    expect(css).toMatch(/body\s*\{[^}]*height\s*:\s*6\.5in/s);
+  test("body height is pinned to 525px for the e-ink viewport", () => {
+    expect(css).toMatch(/body\s*\{[^}]*height\s*:\s*525px/s);
   });
 
-  test("body width is pinned to 10in for the e-ink viewport", () => {
-    expect(css).toMatch(/body\s*\{[^}]*width\s*:\s*10in/s);
+  test("body width is pinned to 1040px for the e-ink viewport", () => {
+    expect(css).toMatch(/body\s*\{[^}]*width\s*:\s*1040px/s);
   });
 });
