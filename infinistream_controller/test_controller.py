@@ -20,6 +20,7 @@ def controller():
             def ADS1263_GPIOChannelMode(self, channel, mode, direction): pass
             ADS1263_DigitalRead = MagicMock(side_effect=lambda ch: 0)
             ADS1263_GetChannalValue = MagicMock(side_effect=lambda ch: 0)
+            ADS1263_SetMode = MagicMock()
         ads = MockADS()
         gpio_mode = {"MODE_DIGITAL": 1}
         ctrl = Controller(ads, gpio_mode)
@@ -447,3 +448,7 @@ def test_safe_resets_drain_pump_state(controller):
     controller._drain_pump_state = DrainPumpState.PUMPING
     controller.safe()
     assert controller._drain_pump_state == DrainPumpState.IDLE
+
+def test_ads1263_initialized_in_single_ended_mode(controller):
+    """Controller.__init__ sets ScanMode=0 (single-ended, 10 channels) so channel 6 is reachable."""
+    controller.ads.ADS1263_SetMode.assert_called_once_with(0)

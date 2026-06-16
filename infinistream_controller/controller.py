@@ -36,6 +36,7 @@ class Controller:
     def __init__(self, ads, gpio_mode):
         self.ads = ads
         self.ads.ADS1263_init_ADC1()
+        self.ads.ADS1263_SetMode(0)  # single-ended: 10 channels (0–9), needed for ch6
         # Set mode select channels to GPIO digital mode
         for din in MODE_SELECT_CHANNELS:
             self.ads.ADS1263_GPIOChannelMode(din.channel, gpio_mode["MODE_DIGITAL"], 1)
