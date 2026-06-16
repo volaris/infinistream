@@ -15,12 +15,29 @@ module.exports = NodeHelper.create({
         this.startWebhookServer();
         this.mode = "CONNECTING"
         this.turbidity = 0
+        this._weatherReady = false;
+        this._weatherTimer = null;
 	},
 
     socketNotificationReceived: function(notification, payload) {
         Log.info("Event received: " + notification + " " + payload)
-        if (notification == "STARTED") {
+        if (notification === "STARTED") {
+            // Module (re)started — reset weather flag so the first data arrival
+            // triggers a fresh render.
+            this._weatherReady = false;
             this.updateModule();
+        } else if (notification === "WEATHER_UPDATED") {
+            if (!this._weatherReady) {
+                this._weatherReady = true;
+                // Debounce: current + forecast modules both fire WEATHER_UPDATED
+                // close together — wait for both before screenshotting.
+                if (this._weatherTimer) clearTimeout(this._weatherTimer);
+                this._weatherTimer = setTimeout(() => {
+                    this._weatherTimer = null;
+                    Log.info("Weather data ready — triggering e-ink render");
+                    this.triggerEink();
+                }, 2000);
+            }
         }
     },
 

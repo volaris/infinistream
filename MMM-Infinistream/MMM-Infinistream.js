@@ -39,6 +39,14 @@ Module.register("MMM-Infinistream", {
     this.updateDom();
   },
 
+  // Forward weather-ready event to node_helper so it can trigger a one-time
+  // e-ink render when weather data first populates the display.
+  notificationReceived: function (notification) {
+    if (notification === "WEATHER_UPDATED") {
+      this.sendSocketNotification("WEATHER_UPDATED", {});
+    }
+  },
+
   getDom: function () {
     const wrapper = document.createElement("div");
     wrapper.className = "infinistream";

@@ -138,4 +138,71 @@ describe("helper initial state", () => {
       expect.objectContaining({ mode: expect.any(String) })
     );
   });
+
+  test("STARTED resets _weatherReady to false", () => {
+    helper._weatherReady = true;
+    helper.socketNotificationReceived("STARTED", {});
+    expect(helper._weatherReady).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WEATHER_UPDATED socket notification
+// ---------------------------------------------------------------------------
+
+describe("socketNotificationReceived — WEATHER_UPDATED", () => {
+  let einkSpy;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    einkSpy = jest.spyOn(helper, "triggerEink").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    einkSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  test("starts with _weatherReady false", () => {
+    expect(helper._weatherReady).toBe(false);
+  });
+
+  test("first WEATHER_UPDATED sets _weatherReady and schedules an eink render", () => {
+    helper.socketNotificationReceived("WEATHER_UPDATED", {});
+    expect(helper._weatherReady).toBe(true);
+    expect(einkSpy).not.toHaveBeenCalled();   // not yet — settle delay pending
+    jest.advanceTimersByTime(2000);
+    expect(einkSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("second WEATHER_UPDATED is ignored once _weatherReady is set", () => {
+    helper.socketNotificationReceived("WEATHER_UPDATED", {});
+    jest.advanceTimersByTime(2000);
+    einkSpy.mockClear();
+
+    helper.socketNotificationReceived("WEATHER_UPDATED", {});
+    jest.advanceTimersByTime(2000);
+    expect(einkSpy).not.toHaveBeenCalled();
+  });
+
+  test("rapid WEATHER_UPDATED events collapse to a single render", () => {
+    helper.socketNotificationReceived("WEATHER_UPDATED", {});
+    jest.advanceTimersByTime(100);
+    helper.socketNotificationReceived("WEATHER_UPDATED", {}); // blocked by _weatherReady
+    jest.advanceTimersByTime(2000);
+    expect(einkSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("STARTED resets flag so the next WEATHER_UPDATED triggers again", () => {
+    helper.socketNotificationReceived("WEATHER_UPDATED", {});
+    jest.advanceTimersByTime(2000);
+    einkSpy.mockClear();
+
+    helper.socketNotificationReceived("STARTED", {});
+    expect(helper._weatherReady).toBe(false);
+
+    helper.socketNotificationReceived("WEATHER_UPDATED", {});
+    jest.advanceTimersByTime(2000);
+    expect(einkSpy).toHaveBeenCalledTimes(1);
+  });
 });

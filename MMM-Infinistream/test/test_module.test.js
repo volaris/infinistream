@@ -213,6 +213,25 @@ describe("updateFlowVisibility", () => {
 });
 
 // ---------------------------------------------------------------------------
+// notificationReceived
+// ---------------------------------------------------------------------------
+
+describe("notificationReceived", () => {
+  test("WEATHER_UPDATED forwards a socket notification to node_helper", () => {
+    const sendSocketNotification = jest.fn();
+    moduleDef.notificationReceived.call({ sendSocketNotification }, "WEATHER_UPDATED");
+    expect(sendSocketNotification).toHaveBeenCalledWith("WEATHER_UPDATED", {});
+  });
+
+  test("other notifications are ignored", () => {
+    const sendSocketNotification = jest.fn();
+    moduleDef.notificationReceived.call({ sendSocketNotification }, "CLOCK_SECOND");
+    moduleDef.notificationReceived.call({ sendSocketNotification }, "MODULE_DOM_UPDATED");
+    expect(sendSocketNotification).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // getDom — rendered content
 // ---------------------------------------------------------------------------
 
