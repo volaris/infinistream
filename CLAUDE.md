@@ -5,8 +5,9 @@
 Tests live in `infinistream_controller/`. Run both suites after any controller change:
 
 ```bash
-PYTHONPATH=/workspaces/infinistream:/workspaces/infinistream/infinistream_controller/venv/lib/python3.10/site-packages \
-  python3.10 -m pytest infinistream_controller/test_controller.py infinistream_controller/test_module_integration.py -v
+PYTHONPATH=/workspaces/infinistream \
+  infinistream_controller/venv/bin/python -m pytest \
+  infinistream_controller/test_controller.py infinistream_controller/test_module_integration.py -v
 ```
 
 - `test_controller.py` — BDD + unit tests (mocked hardware, mocked HTTP)
