@@ -17,13 +17,14 @@ def controller():
         mock_devantech = mock_eth008.ETH008.return_value
         class MockADS:
             def ADS1263_init_ADC1(self): pass
-            def ADS1263_GPIOChannelMode(self, channel, mode, direction): pass
-            ADS1263_DigitalRead = MagicMock(side_effect=lambda ch: 0)
             ADS1263_GetChannalValue = MagicMock(side_effect=lambda ch: 0)
             ADS1263_SetMode = MagicMock()
         ads = MockADS()
-        gpio_mode = {"MODE_DIGITAL": 1}
-        ctrl = Controller(ads, gpio_mode)
+        mock_gpio = MagicMock()
+        mock_gpio.IN = 1
+        mock_gpio.PUD_DOWN = 2
+        mock_gpio.input.return_value = 0
+        ctrl = Controller(ads, mock_gpio)
         ctrl.mock_requests = mock_requests
         # Per-channel ADC value dict — Given steps write here; side_effect reads from it.
         # Unit tests may override side_effect directly for custom behaviour.
@@ -43,7 +44,8 @@ def set_mode_select(controller, mode):
         "sanitize": [1,0,0]
     }
     bits = mode_map[mode]
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: bits[ch-3]
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: bits[pins.index(pin)]
 
 @given("flow out sensor reads above threshold")
 def set_flow_out_high(controller):
@@ -172,7 +174,7 @@ def check_calibration(controller):
 @given("the mode select GPIOs indicate an unrecognized pattern")
 def set_unrecognized_mode(controller):
     # 0b111 = 7, not a valid pattern; decode_mode_bits falls back to MODE_DRAIN
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: 1
+    controller.gpio.input.side_effect = lambda pin: 1
 
 @when("the controller steps")
 def controller_step(controller):
@@ -259,7 +261,8 @@ def test_flow_threshold_above_boundary_updates_timestamp(controller):
     controller.ads.ADS1263_GetChannalValue.side_effect = (
         lambda ch: threshold_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
     )
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]  # shower
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected > before
@@ -275,7 +278,8 @@ def test_flow_threshold_below_boundary_does_not_update_timestamp(controller):
     controller.ads.ADS1263_GetChannalValue.side_effect = (
         lambda ch: below_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
     )
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]  # shower
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected == before
@@ -299,7 +303,8 @@ def test_throttle_sends_on_mode_change(controller):
     controller.step()  # DRAIN (all bits 0)
     controller.mock_requests.post.reset_mock()
     # Switch to SHOWER (bits 0,1,0)
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
     controller.step()
     assert controller.mock_requests.post.call_count == 1
     payload = controller.mock_requests.post.call_args.kwargs["json"]
@@ -342,7 +347,8 @@ def test_turbidity_tier_boundaries(controller):
 # --- Drain pump state machine unit tests ---
 
 def _shower_bits(controller):
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
 
 def test_drain_pump_starts_priming_when_shower_active(controller):
     """Drain pump turns on and enters PRIMING when shower drain flow is detected."""

@@ -57,8 +57,7 @@ def live_webhook():
 
 class MockADS:
     def ADS1263_init_ADC1(self): pass
-    def ADS1263_GPIOChannelMode(self, ch, mode, direction): pass
-    ADS1263_DigitalRead = MagicMock(side_effect=lambda ch: 0)
+    ADS1263_SetMode = MagicMock()
     ADS1263_GetChannalValue = MagicMock(side_effect=lambda ch: 0)
 
 
@@ -75,12 +74,16 @@ def controller(live_webhook, monkeypatch):
     monkeypatch.setattr(controller_module, "MAGICMIRROR_WEBHOOK_URL", live_webhook)
 
     ads = MockADS()
-    ads.ADS1263_DigitalRead = MagicMock(side_effect=lambda ch: 0)
     ads.ADS1263_GetChannalValue = MagicMock(side_effect=lambda ch: 0)
+
+    mock_gpio = MagicMock()
+    mock_gpio.IN = 1
+    mock_gpio.PUD_DOWN = 2
+    mock_gpio.input.return_value = 0
 
     with monkeypatch.context() as m:
         m.setattr(controller_module, "eth008", MagicMock())
-        ctrl = Controller(ads, {"MODE_DIGITAL": 1})
+        ctrl = Controller(ads, mock_gpio)
 
     ctrl.devantech = MagicMock()
 
@@ -108,8 +111,8 @@ def test_step_delivers_payload_to_webhook(controller):
 
 def test_webhook_receives_correct_mode_name(controller):
     """Shower-mode GPIOs produce mode='SHOWER' in the webhook payload."""
-    # GPIO bits for shower: ch3=0, ch4=1, ch5=0
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
     controller.step()
     assert _WebhookHandler.log[-1]["mode"] == "SHOWER"
 
@@ -141,7 +144,8 @@ def test_mode_change_overrides_throttle(controller):
     """A mode change on the second step fires a second POST immediately."""
     controller.step()  # DRAIN (all bits 0)
     # Switch to SHOWER
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
     controller.step()
     assert len(_WebhookHandler.log) == 2
     assert _WebhookHandler.log[1]["mode"] == "SHOWER"
@@ -163,7 +167,8 @@ def test_relay_actuators_set_for_drain_mode(controller):
 
 def test_relay_actuators_set_for_shower_mode(controller):
     """SHOWER mode opens post-filter valve and enables both pumps and UVC."""
-    controller.ads.ADS1263_DigitalRead.side_effect = lambda ch: [0, 1, 0][ch - 3]
+    pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
+    controller.gpio.input.side_effect = lambda pin: [0, 1, 0][pins.index(pin)]
     controller.step()
     calls = {
         call.args[0]: call.args[2]

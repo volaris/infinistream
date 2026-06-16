@@ -14,7 +14,7 @@ class AnalogInputConfig():
 
 @dataclass
 class DigitalInputConfig():
-    channel: int
+    pin: int  # RPi BCM pin number
 
 @dataclass
 class RelayChannel():
@@ -60,10 +60,12 @@ TURBIDITY_SENSOR = AnalogInputConfig(
 )
 
 # Digital input configuration for mode select (rotary switch)
+# Uses RPi BCM pins 23/24/25 (physical 16/18/22) with internal pull-down.
+# Switch common wire connects to VCC; selected contact pulls the pin high.
 MODE_SELECT_CHANNELS: List[DigitalInputConfig] = [
-    DigitalInputConfig(channel=3),
-    DigitalInputConfig(channel=4),
-    DigitalInputConfig(channel=5)
+    DigitalInputConfig(pin=23),  # Bit 2 (MSB)
+    DigitalInputConfig(pin=24),  # Bit 1
+    DigitalInputConfig(pin=25),  # Bit 0 (LSB)
 ]
 
 # Relay assignments

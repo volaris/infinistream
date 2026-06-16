@@ -33,13 +33,13 @@ _PRIME_RETRY_INTERVAL  = 30   # seconds — wait after failed prime before retry
 
 
 class Controller:
-    def __init__(self, ads, gpio_mode):
+    def __init__(self, ads, gpio):
         self.ads = ads
+        self.gpio = gpio
         self.ads.ADS1263_init_ADC1()
         self.ads.ADS1263_SetMode(0)  # single-ended: 10 channels (0–9), needed for ch6
-        # Set mode select channels to GPIO digital mode
         for din in MODE_SELECT_CHANNELS:
-            self.ads.ADS1263_GPIOChannelMode(din.channel, gpio_mode["MODE_DIGITAL"], 1)
+            self.gpio.setup(din.pin, self.gpio.IN, pull_up_down=self.gpio.PUD_DOWN)
         self.devantech = eth008.ETH008(ip = DEVANTECH_IP, port = DEVANTECH_PORT, password = "password")
         self.devantech.connect()
         self._last_sent_mode = None
@@ -60,10 +60,10 @@ class Controller:
         self._drain_pump_state_entered = datetime.datetime.min
 
     def read_sensors(self):
-        # Read mode select from GPIOs (digital)
+        # Read mode select from RPi GPIO pins (active-high, pull-down)
         mode_bits = []
         for din in MODE_SELECT_CHANNELS:
-            val = self.ads.ADS1263_DigitalRead(din.channel)
+            val = self.gpio.input(din.pin)
             mode_bits.append(val)
         mode_select = self.decode_mode_bits(mode_bits)
 
@@ -278,8 +278,9 @@ class Controller:
 
 @click.command()
 def run():
-    from infinistream_controller.ADS1263 import ADS1263, GPIO_MODE  # Import only here
-    controller = Controller(ADS1263(), GPIO_MODE)
+    from infinistream_controller.ADS1263 import ADS1263
+    import RPi.GPIO as GPIO
+    controller = Controller(ADS1263(), GPIO)
 
     while True:
         controller.step()

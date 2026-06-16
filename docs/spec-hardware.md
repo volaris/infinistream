@@ -11,13 +11,13 @@ issues cannot affect the control loop.
 | Component             | Model / Part            | Interface        | Role                                   |
 |-----------------------|-------------------------|------------------|----------------------------------------|
 | Controller SBC        | Raspberry Pi            | —                | Runs Python control loop               |
-| ADC / GPIO board      | Waveshare ADS1263 HAT   | SPI (bus 0)      | 24-bit analog reads + GPIO digital I/O |
+| ADC / GPIO board      | Waveshare ADS1263 HAT   | SPI (bus 0)      | 24-bit analog reads                    |
 | Relay board           | Devantech ETH008        | TCP/IP           | Controls all valves and pumps          |
 | Flow sensor (drain)   | Gredia GR-S403          | Analog (0–5 V)   | Measures shower drain flow rate        |
 | Flow sensor (supply)  | Gredia GR-S403          | Analog (0–5 V)   | Measures supply flow to shower head    |
 | Flow sensor (return)  | Gredia GR-S403          | Analog (0–5 V)   | Measures return pump output flow       |
 | Turbidity sensor      | DFRobot KS0414          | Analog (0–5 V)   | Measures water clarity in NTU          |
-| Mode select switch    | 3-position rotary       | Digital GPIO     | Operator mode selection                |
+| Mode select switch    | 3-position rotary       | RPi GPIO (BCM)   | Operator mode selection                |
 
 ### Display Pi
 
@@ -46,8 +46,7 @@ issues cannot affect the control loop.
 | 2       | Turbidity       | DFRobot KS0414 | NTU    | 4000.0           | Inverted: high V = clear     |
 | 6       | Flow return     | Gredia GR-S403 | L/min  | 20.0             | Drain pump outlet; dry-run protection |
 
-Channels 3–5 are reserved for digital GPIO (mode select switch). Channel 6 is the next
-available analog input.
+Channels 3–5 are available for future analog use. Channel 6 is used for flow return.
 
 #### Calibration Formula
 
@@ -63,16 +62,22 @@ sensor_value = (raw_adc / full_scale_adc) * full_scale_sensor + offset
 
 ### Digital Input Channels (Mode Select)
 
-Channels 3, 4, and 5 are configured as digital GPIO inputs. Each reads a single bit
-(0 or 1) from the rotary mode-select switch.
+Mode select uses three Raspberry Pi GPIO pins directly, not the ADS1263. Each pin reads
+one bit of the rotary switch position. Pins are configured as inputs with internal
+pull-down resistors; the rotary switch common wire connects to VCC (3.3 V). The selected
+contact pulls its pin high. A disconnected or unpowered line reads 0, which decodes as
+DRAIN — the safest fallback mode.
 
-| Channel | Bit Position | Description       |
-|---------|--------------|-------------------|
-| 3       | Bit 2 (MSB)  | Mode select bit 2 |
-| 4       | Bit 1        | Mode select bit 1 |
-| 5       | Bit 0 (LSB)  | Mode select bit 0 |
+| BCM Pin | Physical Pin | Bit Position | Description       |
+|---------|--------------|--------------|-------------------|
+| 23      | 16           | Bit 2 (MSB)  | Mode select bit 2 |
+| 24      | 18           | Bit 1        | Mode select bit 1 |
+| 25      | 22           | Bit 0 (LSB)  | Mode select bit 0 |
 
-Bit assembly: `val = (ch3 << 2) | (ch4 << 1) | ch5`
+**Wiring:** rotary switch common → VCC (3.3 V); each output contact → BCM 23/24/25.
+No external resistors required; RPi internal pull-downs (~50 kΩ) hold pins low when open.
+
+Bit assembly: `val = (bcm23 << 2) | (bcm24 << 1) | bcm25`
 
 ---
 
