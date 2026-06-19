@@ -310,7 +310,7 @@ Module.register("MMM-Infinistream", {
 
   getStyles: function () {
     return [
-      "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css",
+      "modules/MMM-Infinistream/node_modules/@fortawesome/fontawesome-free/css/all.min.css",
       this.file("MMM-Infinistream.css")
     ];
   }
