@@ -196,7 +196,12 @@ class Controller:
                 print(f"Attempting update @ {MAGICMIRROR_WEBHOOK_URL}")
                 requests.post(
                     MAGICMIRROR_WEBHOOK_URL,
-                    json={"mode": mode_name, "turbidity": round(sensors.turbidity, 2)},
+                    json={
+                        "mode": mode_name,
+                        "turbidity": round(sensors.turbidity, 2),
+                        "flow_in": round(sensors.flow_in, 2),
+                        "flow_out": round(sensors.flow_out, 2),
+                    },
                     timeout=2,
                 )
             except requests.exceptions.RequestException as e:

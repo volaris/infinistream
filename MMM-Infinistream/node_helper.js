@@ -15,6 +15,8 @@ module.exports = NodeHelper.create({
         this.startWebhookServer();
         this.mode = "CONNECTING"
         this.turbidity = 0
+        this.flow_in = 0
+        this.flow_out = 0
         this._weatherReady = false;
         this._weatherTimer = null;
 	},
@@ -49,6 +51,8 @@ module.exports = NodeHelper.create({
                 Log.info("sending notification <mode: " + req.body.mode + ", turbidity: " + req.body.turbidity + ">")
                 this.mode = req.body.mode;
                 this.turbidity = req.body.turbidity;
+                this.flow_in = req.body.flow_in ?? 0;
+                this.flow_out = req.body.flow_out ?? 0;
                 this.updateModule();
                 Log.info("SHOWER_UPDATE_EVENT notification sent");
                 setTimeout(() => this.triggerEink(), EINK_SETTLE_MS);
@@ -62,7 +66,9 @@ module.exports = NodeHelper.create({
     updateModule: function () {
         this.sendSocketNotification("SHOWER_UPDATE_EVENT", {
             mode: this.mode,
-            turbidity: this.turbidity
+            turbidity: this.turbidity,
+            flow_in: this.flow_in,
+            flow_out: this.flow_out,
         });
     },
 

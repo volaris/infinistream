@@ -23,6 +23,8 @@ Module.register("MMM-Infinistream", {
     // Set default mode to CONNECTING until we receive a webhook update
     this.mode = "CONNECTING";
     this.turbidity = 0;
+    this.flow_in = 0;
+    this.flow_out = 0;
     this.sendSocketNotification("STARTED", { message: "test1" });
   },
 
@@ -34,8 +36,10 @@ Module.register("MMM-Infinistream", {
         " - Payload: " +
         JSON.stringify(payload)
     );
-    this.turbidity = payload.turbidity;
     this.mode = payload.mode;
+    this.turbidity = payload.turbidity;
+    this.flow_in = payload.flow_in ?? 0;
+    this.flow_out = payload.flow_out ?? 0;
     this.updateDom();
   },
 
@@ -67,6 +71,13 @@ Module.register("MMM-Infinistream", {
     const turbidityLevel = document.createTextNode(" (" + this.turbidity + " NTU)");
     turbidityDiv.appendChild(turbidityLevel);
     wrapper.appendChild(turbidityDiv);
+
+    // Flow display
+    const flowReadingsDiv = document.createElement("div");
+    flowReadingsDiv.appendChild(document.createTextNode(
+      "In: " + this.formatFlow(this.flow_in) + "  |  Out: " + this.formatFlow(this.flow_out)
+    ));
+    wrapper.appendChild(flowReadingsDiv);
 
     // space
     const lineSpace = document.createElement("br");
@@ -288,6 +299,13 @@ Module.register("MMM-Infinistream", {
         }
       }
     });
+  },
+
+  formatFlow: function (lpm) {
+    if (config.units === "imperial") {
+      return (lpm * 0.264172).toFixed(2) + " gal/min";
+    }
+    return lpm.toFixed(2) + " L/min";
   },
 
   getStyles: function () {

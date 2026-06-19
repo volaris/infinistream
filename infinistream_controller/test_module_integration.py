@@ -107,6 +107,8 @@ def test_step_delivers_payload_to_webhook(controller):
     payload = _WebhookHandler.log[0]
     assert "mode" in payload
     assert "turbidity" in payload
+    assert "flow_in" in payload
+    assert "flow_out" in payload
 
 
 def test_webhook_receives_correct_mode_name(controller):
