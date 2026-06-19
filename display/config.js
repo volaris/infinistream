@@ -37,7 +37,7 @@ let config = {
 			module: "weather",
 			position: "top_left",
 			config: {
-				weatherProvider: "openmeteo",
+				weatherProvider: "rockblock",
 				type: "current",
 				lat: 40.776676,
 				lon: -73.971321
@@ -80,7 +80,7 @@ let config = {
 			position: "top_right",
 			header: "Weather Forecast",
 			config: {
-				weatherProvider: "openmeteo",
+				weatherProvider: "rockblock",
 				type: "forecast",
 				lat: 40.776676,
 				lon: -73.971321

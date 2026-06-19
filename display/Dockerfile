@@ -30,7 +30,7 @@ RUN cd /opt/magic_mirror/modules/MMM-Infinistream \
 COPY display/config.js      /opt/magic_mirror/config/config.js
 COPY display/css/custom.css /opt/magic_mirror/css/custom.css
 
-# Custom weather provider for RockBLOCK / comms-service
+# Custom weather provider (Open-Meteo primary, RockBLOCK/comms-service fallback)
 COPY display/providers/rockblock.js \
      /opt/magic_mirror/modules/default/weather/providers/rockblock.js
 

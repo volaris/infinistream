@@ -1,0 +1,16 @@
+{
+  "name": "infinistream-display",
+  "private": true,
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/test/**/*.test.js"
+    ]
+  },
+  "devDependencies": {
+    "jest": "^30.4.2"
+  }
+}
