@@ -102,6 +102,11 @@ MAGICMIRROR_WEBHOOK_URL = os.environ.get("MAGICMIRROR_WEBHOOK_URL", "http://192.
 # Must match the turbidityLevels config in MMM-Infinistream.
 TURBIDITY_TIERS = [0, 50, 100]
 
-# Minimum seconds between display webhook posts when mode and turbidity tier
-# are unchanged. Mode or tier changes always send immediately.
+# Minimum NTU change from the last sent value to trigger an immediate display
+# update. Chosen to be well above sensor noise (~2–5 NTU) and flow turbulence
+# (~5–15 NTU) while remaining sensitive to real fouling trends.
+TURBIDITY_DELTA_THRESHOLD = 10
+
+# Minimum seconds between display webhook posts when mode and turbidity are
+# unchanged beyond the delta threshold. Mode or delta changes always send immediately.
 DISPLAY_UPDATE_INTERVAL = 30

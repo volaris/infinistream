@@ -334,6 +334,42 @@ def test_throttle_sends_on_turbidity_tier_change(controller):
     controller.step()
     assert controller.mock_requests.post.call_count == 1
 
+def test_throttle_sends_on_turbidity_delta_change(controller):
+    """Turbidity change >= TURBIDITY_DELTA_THRESHOLD immediately overrides the throttle."""
+    # Anchor at a mid-tier value so a large delta won't cross a tier boundary (tiers at 50, 100).
+    # Use 2× the threshold as the delta to stay well clear of ADC integer-truncation error.
+    ntu_base = 20
+    ntu_new  = ntu_base + hw_conf.TURBIDITY_DELTA_THRESHOLD * 2
+    adc_base = int(hw_conf.TURBIDITY_SENSOR.full_scale_adc * (1 - ntu_base / hw_conf.TURBIDITY_SENSOR.full_scale_sensor))
+    adc_new  = int(hw_conf.TURBIDITY_SENSOR.full_scale_adc * (1 - ntu_new  / hw_conf.TURBIDITY_SENSOR.full_scale_sensor))
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: adc_base if ch == hw_conf.TURBIDITY_SENSOR.channel else 0
+    )
+    controller.step()
+    controller.mock_requests.post.reset_mock()
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: adc_new if ch == hw_conf.TURBIDITY_SENSOR.channel else 0
+    )
+    controller.step()
+    assert controller.mock_requests.post.call_count == 1
+
+def test_throttle_suppresses_small_turbidity_change(controller):
+    """Turbidity change below TURBIDITY_DELTA_THRESHOLD and within the same tier is suppressed."""
+    ntu_base = 20
+    adc_base = int(hw_conf.TURBIDITY_SENSOR.full_scale_adc * (1 - ntu_base / hw_conf.TURBIDITY_SENSOR.full_scale_sensor))
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: adc_base if ch == hw_conf.TURBIDITY_SENSOR.channel else 0
+    )
+    controller.step()
+    controller.mock_requests.post.reset_mock()
+    ntu_new = ntu_base + hw_conf.TURBIDITY_DELTA_THRESHOLD - 1
+    adc_new = int(hw_conf.TURBIDITY_SENSOR.full_scale_adc * (1 - ntu_new / hw_conf.TURBIDITY_SENSOR.full_scale_sensor))
+    controller.ads.ADS1263_GetChannalValue.side_effect = (
+        lambda ch: adc_new if ch == hw_conf.TURBIDITY_SENSOR.channel else 0
+    )
+    controller.step()
+    assert controller.mock_requests.post.call_count == 0
+
 def test_throttle_sends_after_interval_elapsed(controller):
     """Update is sent after DISPLAY_UPDATE_INTERVAL seconds even with no state change."""
     controller.step()

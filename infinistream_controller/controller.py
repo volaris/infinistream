@@ -15,7 +15,7 @@ from infinistream_controller.hw_conf import (
     DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
     MODE_IDLE, MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
     MODE_NAMES, MAGICMIRROR_WEBHOOK_URL,
-    TURBIDITY_TIERS, DISPLAY_UPDATE_INTERVAL,
+    TURBIDITY_TIERS, TURBIDITY_DELTA_THRESHOLD, DISPLAY_UPDATE_INTERVAL,
     RelayChannel
 )
 
@@ -43,6 +43,7 @@ class Controller:
         self.devantech = eth008.ETH008(ip = DEVANTECH_IP, port = DEVANTECH_PORT, password = "password")
         self.devantech.connect()
         self._last_sent_mode = None
+        self._last_sent_turbidity = None
         self._last_sent_turbidity_tier = None
         self._last_sent_time = datetime.datetime.min
         self._drain_pump_state = DrainPumpState.IDLE
@@ -170,6 +171,7 @@ class Controller:
             self.safe()
 
     @staticmethod
+    @staticmethod
     def _turbidity_tier(turbidity):
         for i in range(len(TURBIDITY_TIERS) - 1, 0, -1):
             if turbidity >= TURBIDITY_TIERS[i]:
@@ -180,6 +182,8 @@ class Controller:
         if mode_name != self._last_sent_mode:
             return True
         if self._turbidity_tier(turbidity) != self._last_sent_turbidity_tier:
+            return True
+        if self._last_sent_turbidity is None or abs(turbidity - self._last_sent_turbidity) >= TURBIDITY_DELTA_THRESHOLD:
             return True
         elapsed = (datetime.datetime.now() - self._last_sent_time).total_seconds()
         return elapsed >= DISPLAY_UPDATE_INTERVAL
@@ -199,6 +203,7 @@ class Controller:
                 print(e)
                 pass
             self._last_sent_mode = mode_name
+            self._last_sent_turbidity = sensors.turbidity
             self._last_sent_turbidity_tier = self._turbidity_tier(sensors.turbidity)
             self._last_sent_time = datetime.datetime.now()
 
