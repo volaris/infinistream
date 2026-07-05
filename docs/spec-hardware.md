@@ -39,14 +39,13 @@ issues cannot affect the control loop.
 
 ### Analog Input Channels
 
-| Channel | Signal          | Sensor         | Units  | Full-Scale Value | Notes                        |
-|---------|-----------------|----------------|--------|------------------|------------------------------|
-| 0       | Flow in (drain) | Gredia GR-S403 | L/min  | 20.0             | Shower pan → filter          |
-| 1       | Flow out (supply)| Gredia GR-S403| L/min  | 20.0             | Supply pump → shower head    |
-| 2       | Turbidity       | DFRobot KS0414 | NTU    | 4000.0           | Inverted: high V = clear     |
-| 6       | Flow return     | Gredia GR-S403 | L/min  | 20.0             | Drain pump outlet; dry-run protection |
+| Channel | Signal    | Sensor         | Units  | Full-Scale Value | Notes                        |
+|---------|-----------|----------------|--------|------------------|------------------------------|
+| 1       | Flow out  | Gredia GR-S403 | L/min  | 20.0             | Supply pump → shower head    |
+| 2       | Turbidity | DFRobot KS0414 | NTU    | 4000.0           | Inverted: high V = clear     |
+| 6       | Flow in   | Gredia GR-S403 | L/min  | 20.0             | Drain pump outlet; dry-run protection |
 
-Channels 3–5 are available for future analog use. Channel 6 is used for flow return.
+Channels 0, 3–5 are available for future analog use.
 
 #### Calibration Formula
 

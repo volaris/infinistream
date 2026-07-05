@@ -25,14 +25,6 @@ DEVANTECH_IP = "192.168.2.3"
 DEVANTECH_PORT = 17494
 
 # Analog input configuration (channel, type, units, ADC full scale, sensor full scale, offset)
-FLOW_IN_SENSOR = AnalogInputConfig(
-    channel=0,
-    sensor_type="flow",
-    units="L/min",
-    full_scale_adc=2**31 - 1,  # ADS1263 ADC1 signed 32-bit max (0x7FFFFFFF)
-    full_scale_sensor=20.0,    # Gredia GR-S403 max flow
-    offset=0.0
-)
 FLOW_OUT_SENSOR = AnalogInputConfig(
     channel=1,
     sensor_type="flow",
@@ -41,7 +33,7 @@ FLOW_OUT_SENSOR = AnalogInputConfig(
     full_scale_sensor=20.0,
     offset=0.0
 )
-FLOW_RETURN_SENSOR = AnalogInputConfig(
+FLOW_IN_SENSOR = AnalogInputConfig(
     channel=6,
     sensor_type="flow",
     units="L/min",

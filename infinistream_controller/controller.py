@@ -9,7 +9,7 @@ from devantech_eth import eth008
 
 from infinistream_controller.hw_conf import (
     DEVANTECH_IP, DEVANTECH_PORT,
-    FLOW_IN_SENSOR, FLOW_OUT_SENSOR, FLOW_RETURN_SENSOR, TURBIDITY_SENSOR,
+    FLOW_IN_SENSOR, FLOW_OUT_SENSOR, TURBIDITY_SENSOR,
     MODE_SELECT_CHANNELS,
     POST_FILTER_VALVE, SANI_LOOP_VALVE, FLUSH_VALVE, DRAIN_VALVE,
     DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
@@ -27,7 +27,7 @@ class DrainPumpState(Enum):
     WAITING = "waiting"
 
 _FLOW_OUT_THRESHOLD    = 0.1  # L/min — shower considered active above this
-_FLOW_RETURN_THRESHOLD = 0.1  # L/min — return pump considered active above this
+_FLOW_IN_THRESHOLD     = 0.1  # L/min — drain return considered active above this
 _PRIME_TIMEOUT         = 15   # seconds — safe dry-run limit before aborting prime
 _PRIME_RETRY_INTERVAL  = 30   # seconds — wait after failed prime before retrying
 
@@ -71,19 +71,16 @@ class Controller:
         # Read flow sensors and turbidity as analog, apply calibration
         flow_in_raw     = self.ads.ADS1263_GetChannalValue(FLOW_IN_SENSOR.channel)
         flow_out_raw    = self.ads.ADS1263_GetChannalValue(FLOW_OUT_SENSOR.channel)
-        flow_return_raw = self.ads.ADS1263_GetChannalValue(FLOW_RETURN_SENSOR.channel)
         turbidity_raw   = self.ads.ADS1263_GetChannalValue(TURBIDITY_SENSOR.channel)
 
-        flow_in     = self.decode_analog(flow_in_raw,     FLOW_IN_SENSOR)
-        flow_out    = self.decode_analog(flow_out_raw,    FLOW_OUT_SENSOR)
-        flow_return = self.decode_analog(flow_return_raw, FLOW_RETURN_SENSOR)
-        turbidity   = self.decode_analog(turbidity_raw,   TURBIDITY_SENSOR)
+        flow_in   = self.decode_analog(flow_in_raw,   FLOW_IN_SENSOR)
+        flow_out  = self.decode_analog(flow_out_raw,  FLOW_OUT_SENSOR)
+        turbidity = self.decode_analog(turbidity_raw, TURBIDITY_SENSOR)
 
         return type('Sensors', (), {
             'mode_select': mode_select,
             'flow_in':     flow_in,
             'flow_out':    flow_out,
-            'flow_return': flow_return,
             'turbidity':   turbidity
         })()
 
@@ -190,7 +187,7 @@ class Controller:
 
     def display_status(self, mode, sensors):
         mode_name = MODE_NAMES.get(mode, str(mode))
-        print(f"Mode: {mode_name}, Drain Pump: {self._drain_pump_state.value}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Flow Return: {sensors.flow_return:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
+        print(f"Mode: {mode_name}, Drain Pump: {self._drain_pump_state.value}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
         if self._should_send_display_update(mode_name, sensors.turbidity):
             try:
                 print(f"Attempting update @ {MAGICMIRROR_WEBHOOK_URL}")
@@ -250,7 +247,7 @@ class Controller:
     def _step_drain_pump(self, sensors, mode):
         now = datetime.datetime.now()
         flow_out    = sensors.flow_out    > _FLOW_OUT_THRESHOLD
-        flow_return = sensors.flow_return > _FLOW_RETURN_THRESHOLD
+        flow_in = sensors.flow_in > _FLOW_IN_THRESHOLD
 
         if mode != MODE_SHOWER:
             if self._drain_pump_state != DrainPumpState.IDLE:
@@ -274,7 +271,7 @@ class Controller:
                 self.set_relay_channel(DRAIN_PUMP_POWER, 1)
 
         elif self._drain_pump_state == DrainPumpState.PRIMING:
-            if flow_return:
+            if flow_in:
                 self._drain_pump_state = DrainPumpState.PUMPING
                 self._drain_pump_state_entered = now
             elif not flow_out:
@@ -287,7 +284,7 @@ class Controller:
                 self._drain_pump_state_entered = now
 
         elif self._drain_pump_state == DrainPumpState.PUMPING:
-            if not flow_return:
+            if not flow_in:
                 self.set_relay_channel(DRAIN_PUMP_POWER, 0)
                 self._drain_pump_state = DrainPumpState.IDLE
                 self._drain_pump_state_entered = now

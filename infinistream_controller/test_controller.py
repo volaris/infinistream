@@ -58,7 +58,7 @@ def set_flow_out_low(controller):
 
 @given("flow return sensor reads above threshold")
 def set_flow_return_high(controller):
-    controller._adc_values[hw_conf.FLOW_RETURN_SENSOR.channel] = hw_conf.FLOW_RETURN_SENSOR.full_scale_adc
+    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
 
 @given("the drain pump is in priming state")
 def set_drain_pump_priming(controller):
@@ -422,7 +422,7 @@ def test_drain_pump_transitions_to_pumping_on_return_flow(controller):
     """Return flow during priming transitions drain pump to PUMPING without relay change."""
     _shower_bits(controller)
     controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel]    = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
-    controller._adc_values[hw_conf.FLOW_RETURN_SENSOR.channel] = hw_conf.FLOW_RETURN_SENSOR.full_scale_adc
+    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
     controller._drain_pump_state = DrainPumpState.PRIMING
     controller._drain_pump_state_entered = datetime.datetime.now()
     controller.step()
@@ -441,7 +441,7 @@ def test_drain_pump_stops_when_return_flow_drops(controller):
 def test_drain_pump_continues_pumping_when_shower_drain_stops(controller):
     """Drain pump stays in PUMPING if return flow persists even after shower drain flow stops."""
     _shower_bits(controller)
-    controller._adc_values[hw_conf.FLOW_RETURN_SENSOR.channel] = hw_conf.FLOW_RETURN_SENSOR.full_scale_adc
+    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
     # flow_out = 0 (not set)
     controller._drain_pump_state = DrainPumpState.PUMPING
     controller._drain_pump_state_entered = datetime.datetime.now()
