@@ -85,19 +85,10 @@ class Controller:
         })()
 
     def decode_mode_bits(self, bits):
-        val = (bits[0] << 2) | (bits[1] << 1) | bits[2]
-        if val == 0b000:
-            return MODE_IDLE
-        elif val == 0b001:
-            return MODE_SHOWER
-        elif val == 0b010:
-            return MODE_SANI
-        elif val == 0b011:
-            return MODE_DRAIN
-        elif val == 0b100:
-            return MODE_FLUSH
-        else:
-            return MODE_IDLE  # fault: unknown pattern → safe
+        high = [i for i, b in enumerate(bits) if b]
+        if len(high) == 1:
+            return high[0]  # channel index == mode constant
+        return MODE_IDLE  # none or multiple high → safe fallback
 
     def decode_analog(self, raw, config):
         ratio = raw / config.full_scale_adc

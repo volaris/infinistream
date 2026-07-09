@@ -52,12 +52,14 @@ TURBIDITY_SENSOR = AnalogInputConfig(
 )
 
 # Digital input configuration for mode select (rotary switch)
-# Uses RPi BCM pins 23/24/25 (physical 16/18/22) with internal pull-down.
-# Switch common wire connects to VCC; selected contact pulls the pin high.
+# 5-position 1-of-N: common → VCC; exactly one contact pin pulled high per position.
+# Channel index matches mode constant value (e.g. index 0 = MODE_SANI = 0).
 MODE_SELECT_CHANNELS: List[DigitalInputConfig] = [
-    DigitalInputConfig(pin=23),  # Bit 2 (MSB)
-    DigitalInputConfig(pin=24),  # Bit 1
-    DigitalInputConfig(pin=25),  # Bit 0 (LSB)
+    DigitalInputConfig(pin=23),  # position 0 → MODE_SANI   (BCM 23, physical 16)
+    DigitalInputConfig(pin=24),  # position 1 → MODE_FLUSH  (BCM 24, physical 18)
+    DigitalInputConfig(pin=25),  # position 2 → MODE_DRAIN  (BCM 25, physical 22)
+    DigitalInputConfig(pin=16),  # position 3 → MODE_SHOWER (BCM 16, physical 36)
+    DigitalInputConfig(pin=26),  # position 4 → MODE_IDLE   (BCM 26, physical 37)
 ]
 
 # Relay assignments

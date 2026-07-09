@@ -114,7 +114,7 @@ def test_step_delivers_payload_to_webhook(controller):
 def test_webhook_receives_correct_mode_name(controller):
     """Shower-mode GPIOs produce mode='SHOWER' in the webhook payload."""
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]
     controller.step()
     assert _WebhookHandler.log[-1]["mode"] == "SHOWER"
 
@@ -144,10 +144,10 @@ def test_throttle_suppresses_duplicate_post(controller):
 
 def test_mode_change_overrides_throttle(controller):
     """A mode change on the second step fires a second POST immediately."""
-    controller.step()  # DRAIN (all bits 0)
+    controller.step()  # IDLE (all pins low → fallback)
     # Switch to SHOWER
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]
     controller.step()
     assert len(_WebhookHandler.log) == 2
     assert _WebhookHandler.log[1]["mode"] == "SHOWER"
@@ -156,7 +156,7 @@ def test_mode_change_overrides_throttle(controller):
 def test_relay_actuators_set_for_drain_mode(controller):
     """DRAIN mode de-energizes all valves except the drain valve and drain pump."""
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 1, 1][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0,0,1,0,0][pins.index(pin)]
     controller.step()
     calls = {
         call.args[0]: call.args[2]
@@ -172,7 +172,7 @@ def test_relay_actuators_set_for_drain_mode(controller):
 def test_relay_actuators_set_for_shower_mode(controller):
     """SHOWER mode opens post-filter valve and enables both pumps and UVC."""
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]
     controller.step()
     calls = {
         call.args[0]: call.args[2]

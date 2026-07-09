@@ -38,11 +38,11 @@ def controller():
 @given(parsers.parse('the mode select GPIOs indicate "{mode}"'))
 def set_mode_select(controller, mode):
     mode_map = {
-        "idle":     [0,0,0],
-        "shower":   [0,0,1],
-        "sanitize": [0,1,0],
-        "drain":    [0,1,1],
-        "flush":    [1,0,0],
+        "sanitize": [1,0,0,0,0],  # BCM 23 high → MODE_SANI (index 0)
+        "flush":    [0,1,0,0,0],  # BCM 24 high → MODE_FLUSH (index 1)
+        "drain":    [0,0,1,0,0],  # BCM 25 high → MODE_DRAIN (index 2)
+        "shower":   [0,0,0,1,0],  # BCM 16 high → MODE_SHOWER (index 3)
+        "idle":     [0,0,0,0,1],  # BCM 26 high → MODE_IDLE (index 4)
     }
     bits = mode_map[mode]
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
@@ -184,7 +184,7 @@ def check_calibration(controller):
 
 @given("the mode select GPIOs indicate an unrecognized pattern")
 def set_unrecognized_mode(controller):
-    # 0b111 = 7, not a valid pattern; decode_mode_bits falls back to MODE_DRAIN
+    # all pins high = multiple-high fault; decode_mode_bits falls back to MODE_IDLE
     controller.gpio.input.side_effect = lambda pin: 1
 
 @when("the controller steps")
@@ -273,7 +273,7 @@ def test_flow_threshold_above_boundary_updates_timestamp(controller):
         lambda ch: threshold_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
     )
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]  # shower
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected > before
@@ -290,7 +290,7 @@ def test_flow_threshold_below_boundary_does_not_update_timestamp(controller):
         lambda ch: below_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
     )
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]  # shower
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
     Controller.determine_derived_mode(controller.read_sensors())
     assert Controller.determine_derived_mode.last_flow_detected == before
@@ -315,7 +315,7 @@ def test_throttle_sends_on_mode_change(controller):
     controller.mock_requests.post.reset_mock()
     # Switch to SHOWER (bits 0,0,1)
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]
     controller.step()
     assert controller.mock_requests.post.call_count == 1
     payload = controller.mock_requests.post.call_args.kwargs["json"]
@@ -395,7 +395,7 @@ def test_turbidity_tier_boundaries(controller):
 
 def _shower_bits(controller):
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
-    controller.gpio.input.side_effect = lambda pin: [0, 0, 1][pins.index(pin)]
+    controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]
 
 def test_drain_pump_starts_priming_when_shower_active(controller):
     """Drain pump turns on and enters PRIMING when shower drain flow is detected."""
