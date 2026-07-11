@@ -19,8 +19,10 @@ from infinistream_controller.hw_conf import (
     RelayChannel
 )
 
-# pigpio.RISING_EDGE = 0; hard-coded to avoid import in non-Pi environments
-_PIGPIO_RISING_EDGE = 0
+# pigpio constants — hard-coded to avoid import dependency in non-Pi environments
+_PIGPIO_RISING_EDGE = 0  # pigpio.RISING_EDGE
+_PIGPIO_INPUT       = 0  # pigpio.INPUT
+_PIGPIO_PUD_UP      = 2  # pigpio.PUD_UP
 
 
 class DrainPumpState(Enum):
@@ -43,6 +45,9 @@ class Controller:
         self.ads.ADS1263_SetMode(0)  # single-ended: turbidity on ch2 measured vs AINCOM
         for din in MODE_SELECT_CHANNELS:
             self.gpio.setup(din.pin, self.gpio.IN, pull_up_down=self.gpio.PUD_DOWN)
+        for sensor in (FLOW_IN_SENSOR, FLOW_OUT_SENSOR):
+            pi.set_mode(sensor.pin, _PIGPIO_INPUT)
+            pi.set_pull_up_down(sensor.pin, _PIGPIO_PUD_UP)
         self._flow_in_cb  = pi.callback(FLOW_IN_SENSOR.pin,  _PIGPIO_RISING_EDGE)
         self._flow_out_cb = pi.callback(FLOW_OUT_SENSOR.pin, _PIGPIO_RISING_EDGE)
         self._last_flow_read = datetime.datetime.now()
