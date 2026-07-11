@@ -113,8 +113,8 @@ class Controller:
         self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
         self.set_relay_channel(FLUSH_VALVE, CLOSED)
         self.set_relay_channel(DRAIN_VALVE, OPEN)
-        self.set_relay_channel(DRAIN_PUMP_POWER, 1)
-        self.set_relay_channel(SUPPLY_PUMP_POWER, 0)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 0)
+        self.set_relay_channel(SUPPLY_PUMP_POWER, 1)
         self.set_relay_channel(UVC_POWER, 0)
 
     def set_flush(self):
@@ -122,7 +122,7 @@ class Controller:
         self.set_relay_channel(SANI_LOOP_VALVE, CLOSED)
         self.set_relay_channel(FLUSH_VALVE, OPEN)
         self.set_relay_channel(DRAIN_VALVE, CLOSED)
-        self.set_relay_channel(DRAIN_PUMP_POWER, 1)
+        self.set_relay_channel(DRAIN_PUMP_POWER, 0)
         self.set_relay_channel(SUPPLY_PUMP_POWER, 1)
         self.set_relay_channel(UVC_POWER, 0)
 

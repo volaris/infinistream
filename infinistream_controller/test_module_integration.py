@@ -154,7 +154,7 @@ def test_mode_change_overrides_throttle(controller):
 
 
 def test_relay_actuators_set_for_drain_mode(controller):
-    """DRAIN mode de-energizes all valves except the drain valve and drain pump."""
+    """DRAIN mode opens the drain valve and runs the supply pump to empty the tank."""
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
     controller.gpio.input.side_effect = lambda pin: [0,0,1,0,0][pins.index(pin)]
     controller.step()
@@ -163,9 +163,9 @@ def test_relay_actuators_set_for_drain_mode(controller):
         for call in controller.devantech.setDigitalState.call_args_list
     }
     assert calls[hw_conf.DRAIN_VALVE.channel] == hw_conf.OPEN
-    assert calls[hw_conf.DRAIN_PUMP_POWER.channel] == 1
+    assert calls[hw_conf.DRAIN_PUMP_POWER.channel] == 0
     assert calls[hw_conf.POST_FILTER_VALVE.channel] == hw_conf.CLOSED
-    assert calls[hw_conf.SUPPLY_PUMP_POWER.channel] == 0
+    assert calls[hw_conf.SUPPLY_PUMP_POWER.channel] == 1
     assert calls[hw_conf.UVC_POWER.channel] == 0
 
 
