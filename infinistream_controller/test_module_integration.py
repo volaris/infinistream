@@ -81,11 +81,21 @@ def controller(live_webhook, monkeypatch):
     mock_gpio.PUD_DOWN = 2
     mock_gpio.input.return_value = 0
 
+    mock_flow_in_cb  = MagicMock()
+    mock_flow_out_cb = MagicMock()
+    mock_flow_in_cb.tally.return_value  = 0
+    mock_flow_out_cb.tally.return_value = 0
+    mock_pi = MagicMock()
+    mock_pi.callback.side_effect = lambda pin, edge: (
+        mock_flow_in_cb if pin == hw_conf.FLOW_IN_SENSOR.pin else mock_flow_out_cb
+    )
+
     with monkeypatch.context() as m:
         m.setattr(controller_module, "eth008", MagicMock())
-        ctrl = Controller(ads, mock_gpio)
+        ctrl = Controller(ads, mock_gpio, mock_pi)
 
     ctrl.devantech = MagicMock()
+    ctrl._last_flow_read = datetime.datetime.now() - datetime.timedelta(seconds=1)
 
     # Reset shared auto-sanitize state between tests
     Controller.determine_derived_mode.last_flow_detected = datetime.datetime.now()

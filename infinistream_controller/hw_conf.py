@@ -17,6 +17,11 @@ class DigitalInputConfig():
     pin: int  # RPi BCM pin number
 
 @dataclass
+class PulseInputConfig():
+    pin: int                 # BCM GPIO pin
+    pulses_per_litre: float  # K-factor from sensor datasheet
+
+@dataclass
 class RelayChannel():
     channel: int
 
@@ -24,23 +29,12 @@ class RelayChannel():
 DEVANTECH_IP = "192.168.2.3"
 DEVANTECH_PORT = 17494
 
+# Hall-effect flow sensors: Gredia GR-S403, F = 5.5 × Q, K = 330 pulses/litre
+# Pins: confirm against physical wiring before deploying
+FLOW_OUT_SENSOR = PulseInputConfig(pin=4,  pulses_per_litre=330.0)
+FLOW_IN_SENSOR  = PulseInputConfig(pin=27, pulses_per_litre=330.0)
+
 # Analog input configuration (channel, type, units, ADC full scale, sensor full scale, offset)
-FLOW_OUT_SENSOR = AnalogInputConfig(
-    channel=1,
-    sensor_type="flow",
-    units="L/min",
-    full_scale_adc=2**31 - 1,
-    full_scale_sensor=20.0,
-    offset=0.0
-)
-FLOW_IN_SENSOR = AnalogInputConfig(
-    channel=6,
-    sensor_type="flow",
-    units="L/min",
-    full_scale_adc=2**31 - 1,
-    full_scale_sensor=20.0,
-    offset=0.0
-)
 TURBIDITY_SENSOR = AnalogInputConfig(
     channel=2,
     sensor_type="turbidity",
@@ -104,3 +98,7 @@ TURBIDITY_DELTA_THRESHOLD = 10
 # Minimum seconds between display webhook posts when mode and turbidity are
 # unchanged beyond the delta threshold. Mode or delta changes always send immediately.
 DISPLAY_UPDATE_INTERVAL = 30
+
+# EMA smoothing factor for turbidity (0–1). Higher = faster response, less noise filtering.
+# At 0.5 the smoothed value moves halfway toward each new reading per step.
+TURBIDITY_EMA_ALPHA = 0.5

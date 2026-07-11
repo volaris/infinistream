@@ -14,7 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-bdd", "Pillow"]
-pi  = ["spidev", "RPi.GPIO"]
+pi  = ["spidev", "RPi.GPIO", "pigpio"]
 
 [project.scripts]
 infinistream-controller = "infinistream_controller.controller:run"

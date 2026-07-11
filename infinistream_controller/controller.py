@@ -15,9 +15,12 @@ from infinistream_controller.hw_conf import (
     DRAIN_PUMP_POWER, SUPPLY_PUMP_POWER, UVC_POWER,
     MODE_IDLE, MODE_DRAIN, MODE_FLUSH, MODE_SHOWER, MODE_SANI, OPEN, CLOSED,
     MODE_NAMES, MAGICMIRROR_WEBHOOK_URL,
-    TURBIDITY_TIERS, TURBIDITY_DELTA_THRESHOLD, DISPLAY_UPDATE_INTERVAL,
+    TURBIDITY_TIERS, TURBIDITY_DELTA_THRESHOLD, DISPLAY_UPDATE_INTERVAL, TURBIDITY_EMA_ALPHA,
     RelayChannel
 )
+
+# pigpio.RISING_EDGE = 0; hard-coded to avoid import in non-Pi environments
+_PIGPIO_RISING_EDGE = 0
 
 
 class DrainPumpState(Enum):
@@ -33,15 +36,19 @@ _PRIME_RETRY_INTERVAL  = 30   # seconds — wait after failed prime before retry
 
 
 class Controller:
-    def __init__(self, ads, gpio):
+    def __init__(self, ads, gpio, pi):
         self.ads = ads
         self.gpio = gpio
         self.ads.ADS1263_init_ADC1()
-        self.ads.ADS1263_SetMode(0)  # single-ended: 10 channels (0–9), needed for ch6
+        self.ads.ADS1263_SetMode(0)  # single-ended: turbidity on ch2 measured vs AINCOM
         for din in MODE_SELECT_CHANNELS:
             self.gpio.setup(din.pin, self.gpio.IN, pull_up_down=self.gpio.PUD_DOWN)
+        self._flow_in_cb  = pi.callback(FLOW_IN_SENSOR.pin,  _PIGPIO_RISING_EDGE)
+        self._flow_out_cb = pi.callback(FLOW_OUT_SENSOR.pin, _PIGPIO_RISING_EDGE)
+        self._last_flow_read = datetime.datetime.now()
         self.devantech = eth008.ETH008(ip = DEVANTECH_IP, port = DEVANTECH_PORT, password = "password")
         self.devantech.connect()
+        self._turbidity_ema = None
         self._last_sent_mode = None
         self._last_sent_turbidity = None
         self._last_sent_turbidity_tier = None
@@ -68,14 +75,21 @@ class Controller:
             mode_bits.append(val)
         mode_select = self.decode_mode_bits(mode_bits)
 
-        # Read flow sensors and turbidity as analog, apply calibration
-        flow_in_raw     = self.ads.ADS1263_GetChannalValue(FLOW_IN_SENSOR.channel)
-        flow_out_raw    = self.ads.ADS1263_GetChannalValue(FLOW_OUT_SENSOR.channel)
-        turbidity_raw   = self.ads.ADS1263_GetChannalValue(TURBIDITY_SENSOR.channel)
+        # Read flow sensors from pigpio pulse counters
+        now = datetime.datetime.now()
+        elapsed = (now - self._last_flow_read).total_seconds()
+        self._last_flow_read = now
+        flow_in  = self._read_flow(self._flow_in_cb,  FLOW_IN_SENSOR,  elapsed)
+        flow_out = self._read_flow(self._flow_out_cb, FLOW_OUT_SENSOR, elapsed)
 
-        flow_in   = self.decode_analog(flow_in_raw,   FLOW_IN_SENSOR)
-        flow_out  = self.decode_analog(flow_out_raw,  FLOW_OUT_SENSOR)
-        turbidity = self.decode_analog(turbidity_raw, TURBIDITY_SENSOR)
+        # Read turbidity as analog via ADC; apply EMA to filter sensor noise
+        turbidity_raw = self.ads.ADS1263_GetChannalValue(TURBIDITY_SENSOR.channel)
+        raw_ntu = self.decode_analog(turbidity_raw, TURBIDITY_SENSOR)
+        if self._turbidity_ema is None:
+            self._turbidity_ema = raw_ntu
+        else:
+            self._turbidity_ema = TURBIDITY_EMA_ALPHA * raw_ntu + (1 - TURBIDITY_EMA_ALPHA) * self._turbidity_ema
+        turbidity = self._turbidity_ema
 
         return type('Sensors', (), {
             'mode_select': mode_select,
@@ -89,6 +103,13 @@ class Controller:
         if len(high) == 1:
             return high[0]  # channel index == mode constant
         return MODE_IDLE  # none or multiple high → safe fallback
+
+    def _read_flow(self, cb, sensor, elapsed):
+        pulses = cb.tally()
+        cb.reset_tally()
+        if elapsed <= 0:
+            return 0.0
+        return pulses * 60.0 / (elapsed * sensor.pulses_per_litre)
 
     def decode_analog(self, raw, config):
         ratio = raw / config.full_scale_adc
@@ -289,9 +310,13 @@ class Controller:
 
 @click.command()
 def run():
+    import pigpio
     from infinistream_controller.ADS1263 import ADS1263
     import RPi.GPIO as GPIO
-    controller = Controller(ADS1263(), GPIO)
+    pi = pigpio.pi()
+    if not pi.connected:
+        raise RuntimeError("pigpiod is not running — start it with: sudo pigpiod")
+    controller = Controller(ADS1263(), GPIO, pi)
 
     while True:
         controller.step()

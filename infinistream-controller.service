@@ -1,6 +1,7 @@
 [Unit]
 Description=Infinistream Controller
-After=network.target
+After=network.target pigpiod.service
+Requires=pigpiod.service
 
 [Service]
 # Set the user and group that will run the application

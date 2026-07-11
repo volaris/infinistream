@@ -30,9 +30,9 @@ Feature: Shower panel controller modes and transitions
     Then the controller should set actuators for "shower"
 
   Scenario: Controller applies calibration to analog sensors
-    Given the flow in sensor raw value is maximum
+    Given the turbidity sensor raw value is zero
     When the controller decodes the analog value
-    Then the result should be the sensor full scale
+    Then the result should be the turbidity sensor full scale
 
   Scenario: Controller sets actuators for idle mode
     Given the mode select GPIOs indicate "idle"

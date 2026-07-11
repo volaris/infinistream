@@ -24,10 +24,20 @@ def controller():
         mock_gpio.IN = 1
         mock_gpio.PUD_DOWN = 2
         mock_gpio.input.return_value = 0
-        ctrl = Controller(ads, mock_gpio)
+        # pigpio mock: pi.callback() returns a tally object per flow sensor pin
+        mock_flow_in_cb  = MagicMock()
+        mock_flow_out_cb = MagicMock()
+        mock_flow_in_cb.tally.return_value  = 0
+        mock_flow_out_cb.tally.return_value = 0
+        mock_pi = MagicMock()
+        mock_pi.callback.side_effect = lambda pin, edge: (
+            mock_flow_in_cb if pin == hw_conf.FLOW_IN_SENSOR.pin else mock_flow_out_cb
+        )
+        ctrl = Controller(ads, mock_gpio, mock_pi)
         ctrl.mock_requests = mock_requests
-        # Per-channel ADC value dict — Given steps write here; side_effect reads from it.
-        # Unit tests may override side_effect directly for custom behaviour.
+        # Backdate _last_flow_read so elapsed > 0 on the first read_sensors() call
+        ctrl._last_flow_read = datetime.datetime.now() - datetime.timedelta(seconds=1)
+        # Per-channel ADC value dict — turbidity tests write here
         ctrl._adc_values = {}
         ctrl.ads.ADS1263_GetChannalValue.side_effect = lambda ch: ctrl._adc_values.get(ch, 0)
         Controller.determine_derived_mode.last_flow_detected = datetime.datetime.now()
@@ -50,15 +60,16 @@ def set_mode_select(controller, mode):
 
 @given("flow out sensor reads above threshold")
 def set_flow_out_high(controller):
-    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    # 1 pulse per step → 60/330 ≈ 0.18 L/min, above the 0.1 L/min threshold
+    controller._flow_out_cb.tally.return_value = 1
 
 @given("flow out sensor reads below threshold for a long period")
 def set_flow_out_low(controller):
-    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = 0
+    controller._flow_out_cb.tally.return_value = 0
 
 @given("flow return sensor reads above threshold")
 def set_flow_return_high(controller):
-    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
+    controller._flow_in_cb.tally.return_value = 1
 
 @given("the drain pump is in priming state")
 def set_drain_pump_priming(controller):
@@ -169,18 +180,18 @@ def check_actuators(controller, mode):
     else:
         assert controller.devantech.setDigitalState.call_count == len(expected_calls[mode])
 
-@given("the flow in sensor raw value is maximum")
-def set_flow_in_max(controller):
-    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
+@given("the turbidity sensor raw value is zero")
+def set_turbidity_zero(controller):
+    controller._adc_values[hw_conf.TURBIDITY_SENSOR.channel] = 0
 
 @when("the controller decodes the analog value")
 def decode_analog(controller):
-    raw = hw_conf.FLOW_IN_SENSOR.full_scale_adc
-    controller.analog_value = controller.decode_analog(raw, hw_conf.FLOW_IN_SENSOR)
+    # Turbidity is inverted: raw=0 → ratio=1.0 → full_scale_sensor NTU
+    controller.analog_value = controller.decode_analog(0, hw_conf.TURBIDITY_SENSOR)
 
-@then("the result should be the sensor full scale")
+@then("the result should be the turbidity sensor full scale")
 def check_calibration(controller):
-    assert controller.analog_value == hw_conf.FLOW_IN_SENSOR.full_scale_sensor
+    assert controller.analog_value == hw_conf.TURBIDITY_SENSOR.full_scale_sensor
 
 @given("the mode select GPIOs indicate an unrecognized pattern")
 def set_unrecognized_mode(controller):
@@ -239,14 +250,15 @@ def test_safe_state_deenergizes_all_actuators(controller):
     assert controller.devantech.setDigitalState.call_count == len(expected)
 
 def test_analog_calibration_zero(controller):
-    """ADC value of 0 maps to 0.0 in sensor units."""
-    assert controller.decode_analog(0, hw_conf.FLOW_IN_SENSOR) == 0.0
+    """Raw ADC 0 maps to full scale for the inverted turbidity sensor (0V = max NTU)."""
+    result = controller.decode_analog(0, hw_conf.TURBIDITY_SENSOR)
+    assert result == hw_conf.TURBIDITY_SENSOR.full_scale_sensor
 
 def test_analog_calibration_midscale(controller):
-    """ADC value at half full scale maps to half sensor full scale."""
-    half_raw = hw_conf.FLOW_OUT_SENSOR.full_scale_adc // 2
-    result = controller.decode_analog(half_raw, hw_conf.FLOW_OUT_SENSOR)
-    assert abs(result - hw_conf.FLOW_OUT_SENSOR.full_scale_sensor / 2) < 0.01
+    """ADC value at half full scale maps to half sensor full scale (inverted sensor)."""
+    half_raw = hw_conf.TURBIDITY_SENSOR.full_scale_adc // 2
+    result = controller.decode_analog(half_raw, hw_conf.TURBIDITY_SENSOR)
+    assert abs(result - hw_conf.TURBIDITY_SENSOR.full_scale_sensor / 2) < 0.01
 
 def test_webhook_posts_correct_url(controller):
     """display_status posts to MAGICMIRROR_WEBHOOK_URL."""
@@ -262,16 +274,8 @@ def test_webhook_connection_failure_does_not_crash_controller(controller):
     controller.step()  # should not raise
 
 def test_flow_threshold_above_boundary_updates_timestamp(controller):
-    """The first ADC count that decodes above 0.1 L/min updates last_flow_detected."""
-    import math
-    # Compute the smallest raw value that decodes strictly above 0.1 L/min
-    threshold_raw = math.ceil(
-        (0.1 / hw_conf.FLOW_OUT_SENSOR.full_scale_sensor)
-        * hw_conf.FLOW_OUT_SENSOR.full_scale_adc
-    )
-    controller.ads.ADS1263_GetChannalValue.side_effect = (
-        lambda ch: threshold_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
-    )
+    """1 pulse per step decodes to ~0.18 L/min (above 0.1 threshold) and updates last_flow_detected."""
+    controller._flow_out_cb.tally.return_value = 1
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
     controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
@@ -279,16 +283,8 @@ def test_flow_threshold_above_boundary_updates_timestamp(controller):
     assert Controller.determine_derived_mode.last_flow_detected > before
 
 def test_flow_threshold_below_boundary_does_not_update_timestamp(controller):
-    """ADC values that decode at or below 0.1 L/min do not update last_flow_detected."""
-    import math
-    # One count below the above-threshold value decodes to <= 0.1 L/min
-    below_raw = math.ceil(
-        (0.1 / hw_conf.FLOW_OUT_SENSOR.full_scale_sensor)
-        * hw_conf.FLOW_OUT_SENSOR.full_scale_adc
-    ) - 1
-    controller.ads.ADS1263_GetChannalValue.side_effect = (
-        lambda ch: below_raw if ch == hw_conf.FLOW_OUT_SENSOR.channel else 0
-    )
+    """0 pulses per step decodes to 0 L/min (below 0.1 threshold) and does not update last_flow_detected."""
+    controller._flow_out_cb.tally.return_value = 0
     pins = [din.pin for din in hw_conf.MODE_SELECT_CHANNELS]
     controller.gpio.input.side_effect = lambda pin: [0,0,0,1,0][pins.index(pin)]  # shower
     before = Controller.determine_derived_mode.last_flow_detected
@@ -336,10 +332,10 @@ def test_throttle_sends_on_turbidity_tier_change(controller):
 
 def test_throttle_sends_on_turbidity_delta_change(controller):
     """Turbidity change >= TURBIDITY_DELTA_THRESHOLD immediately overrides the throttle."""
-    # Anchor at a mid-tier value so a large delta won't cross a tier boundary (tiers at 50, 100).
-    # Use 2× the threshold as the delta to stay well clear of ADC integer-truncation error.
+    # Anchor at a mid-tier value so the smoothed value stays in tier 0 (< 50 NTU).
+    # Use 4× the threshold: EMA(0.5) halves the raw delta, so the smoothed delta is 2× threshold.
     ntu_base = 20
-    ntu_new  = ntu_base + hw_conf.TURBIDITY_DELTA_THRESHOLD * 2
+    ntu_new  = ntu_base + hw_conf.TURBIDITY_DELTA_THRESHOLD * 4
     adc_base = int(hw_conf.TURBIDITY_SENSOR.full_scale_adc * (1 - ntu_base / hw_conf.TURBIDITY_SENSOR.full_scale_sensor))
     adc_new  = int(hw_conf.TURBIDITY_SENSOR.full_scale_adc * (1 - ntu_new  / hw_conf.TURBIDITY_SENSOR.full_scale_sensor))
     controller.ads.ADS1263_GetChannalValue.side_effect = (
@@ -400,7 +396,7 @@ def _shower_bits(controller):
 def test_drain_pump_starts_priming_when_shower_active(controller):
     """Drain pump turns on and enters PRIMING when shower drain flow is detected."""
     _shower_bits(controller)
-    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller._flow_out_cb.tally.return_value = 1
     controller.step()
     assert controller._drain_pump_state == DrainPumpState.PRIMING
     controller.devantech.setDigitalState.assert_any_call(hw_conf.DRAIN_PUMP_POWER.channel, 0, 1)
@@ -408,7 +404,7 @@ def test_drain_pump_starts_priming_when_shower_active(controller):
 def test_drain_pump_prime_timeout_transitions_to_waiting(controller):
     """After PRIME_TIMEOUT with no return flow, drain pump turns off and enters WAITING."""
     _shower_bits(controller)
-    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller._flow_out_cb.tally.return_value = 1
     controller._drain_pump_state = DrainPumpState.PRIMING
     controller._drain_pump_state_entered = (
         datetime.datetime.now()
@@ -421,8 +417,8 @@ def test_drain_pump_prime_timeout_transitions_to_waiting(controller):
 def test_drain_pump_transitions_to_pumping_on_return_flow(controller):
     """Return flow during priming transitions drain pump to PUMPING without relay change."""
     _shower_bits(controller)
-    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel]    = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
-    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
+    controller._flow_out_cb.tally.return_value = 1
+    controller._flow_in_cb.tally.return_value  = 1
     controller._drain_pump_state = DrainPumpState.PRIMING
     controller._drain_pump_state_entered = datetime.datetime.now()
     controller.step()
@@ -431,7 +427,7 @@ def test_drain_pump_transitions_to_pumping_on_return_flow(controller):
 def test_drain_pump_stops_when_return_flow_drops(controller):
     """Loss of return flow while pumping turns off the drain pump and returns to IDLE."""
     _shower_bits(controller)
-    # No flow anywhere
+    # Both tallies = 0 (default from fixture)
     controller._drain_pump_state = DrainPumpState.PUMPING
     controller._drain_pump_state_entered = datetime.datetime.now()
     controller.step()
@@ -441,8 +437,8 @@ def test_drain_pump_stops_when_return_flow_drops(controller):
 def test_drain_pump_continues_pumping_when_shower_drain_stops(controller):
     """Drain pump stays in PUMPING if return flow persists even after shower drain flow stops."""
     _shower_bits(controller)
-    controller._adc_values[hw_conf.FLOW_IN_SENSOR.channel] = hw_conf.FLOW_IN_SENSOR.full_scale_adc
-    # flow_out = 0 (not set)
+    controller._flow_in_cb.tally.return_value = 1
+    # flow_out tally = 0 (default)
     controller._drain_pump_state = DrainPumpState.PUMPING
     controller._drain_pump_state_entered = datetime.datetime.now()
     controller.step()
@@ -451,7 +447,7 @@ def test_drain_pump_continues_pumping_when_shower_drain_stops(controller):
 def test_drain_pump_stops_when_return_flow_stops_after_shower_ends(controller):
     """Drain pump stops (IDLE) when return flow stops, even if shower drain also stopped."""
     _shower_bits(controller)
-    # Both flows = 0
+    # Both tallies = 0 (default)
     controller._drain_pump_state = DrainPumpState.PUMPING
     controller._drain_pump_state_entered = datetime.datetime.now()
     controller.step()
@@ -460,7 +456,7 @@ def test_drain_pump_stops_when_return_flow_stops_after_shower_ends(controller):
 def test_drain_pump_stops_priming_when_shower_drain_flow_stops(controller):
     """If shower drain flow drops during priming, drain pump turns off and returns to IDLE."""
     _shower_bits(controller)
-    # flow_out = 0 (not set)
+    # flow_out tally = 0 (default)
     controller._drain_pump_state = DrainPumpState.PRIMING
     controller._drain_pump_state_entered = datetime.datetime.now()
     controller.step()
@@ -470,7 +466,7 @@ def test_drain_pump_stops_priming_when_shower_drain_flow_stops(controller):
 def test_drain_pump_retries_priming_in_same_step_after_waiting_interval(controller):
     """After PRIME_RETRY_INTERVAL with active drain flow, drain pump starts priming in the same step."""
     _shower_bits(controller)
-    controller._adc_values[hw_conf.FLOW_OUT_SENSOR.channel] = hw_conf.FLOW_OUT_SENSOR.full_scale_adc
+    controller._flow_out_cb.tally.return_value = 1
     controller._drain_pump_state = DrainPumpState.WAITING
     controller._drain_pump_state_entered = (
         datetime.datetime.now()
@@ -503,5 +499,5 @@ def test_safe_resets_drain_pump_state(controller):
     assert controller._drain_pump_state == DrainPumpState.IDLE
 
 def test_ads1263_initialized_in_single_ended_mode(controller):
-    """Controller.__init__ sets ScanMode=0 (single-ended, 10 channels) so channel 6 is reachable."""
+    """Controller.__init__ sets ScanMode=0 (single-ended) so turbidity on ch2 measures vs AINCOM."""
     controller.ads.ADS1263_SetMode.assert_called_once_with(0)
