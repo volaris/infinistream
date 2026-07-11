@@ -49,6 +49,8 @@ class Controller:
         self.devantech = eth008.ETH008(ip = DEVANTECH_IP, port = DEVANTECH_PORT, password = "password")
         self.devantech.connect()
         self._turbidity_ema = None
+        self._last_flow_in_pulses  = 0
+        self._last_flow_out_pulses = 0
         self._last_sent_mode = None
         self._last_sent_turbidity = None
         self._last_sent_turbidity_tier = None
@@ -79,6 +81,8 @@ class Controller:
         now = datetime.datetime.now()
         elapsed = (now - self._last_flow_read).total_seconds()
         self._last_flow_read = now
+        self._last_flow_in_pulses  = self._flow_in_cb.tally()
+        self._last_flow_out_pulses = self._flow_out_cb.tally()
         flow_in  = self._read_flow(self._flow_in_cb,  FLOW_IN_SENSOR,  elapsed)
         flow_out = self._read_flow(self._flow_out_cb, FLOW_OUT_SENSOR, elapsed)
 
@@ -199,7 +203,10 @@ class Controller:
 
     def display_status(self, mode, sensors):
         mode_name = MODE_NAMES.get(mode, str(mode))
-        print(f"Mode: {mode_name}, Drain Pump: {self._drain_pump_state.value}, Flow In: {sensors.flow_in:.2f} L/min, Flow Out: {sensors.flow_out:.2f} L/min, Turbidity: {sensors.turbidity:.1f} NTU")
+        print(f"Mode: {mode_name}, Drain Pump: {self._drain_pump_state.value}, "
+              f"Flow In: {sensors.flow_in:.2f} L/min ({self._last_flow_in_pulses} pulses, BCM {FLOW_IN_SENSOR.pin}), "
+              f"Flow Out: {sensors.flow_out:.2f} L/min ({self._last_flow_out_pulses} pulses, BCM {FLOW_OUT_SENSOR.pin}), "
+              f"Turbidity: {sensors.turbidity:.1f} NTU")
         if self._should_send_display_update(mode_name, sensors.turbidity):
             try:
                 print(f"Attempting update @ {MAGICMIRROR_WEBHOOK_URL}")
