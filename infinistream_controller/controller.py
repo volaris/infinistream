@@ -163,7 +163,7 @@ class Controller:
         self.set_relay_channel(DRAIN_VALVE, CLOSED)
         self.set_relay_channel(SUPPLY_PUMP_POWER, 1)
         self.set_relay_channel(UVC_POWER, 1)
-        # DRAIN_PUMP_POWER is managed by _step_drain_pump
+        self.set_relay_channel(DRAIN_PUMP_POWER, 1)
 
     def set_sani(self):
         self.set_relay_channel(POST_FILTER_VALVE, CLOSED)
@@ -317,7 +317,6 @@ class Controller:
         sensors = self.read_sensors()
         mode = Controller.determine_derived_mode(sensors)
         self.set_mode(mode)
-        self._step_drain_pump(sensors, mode)
         self.display_status(mode, sensors)
 
 @click.command()
